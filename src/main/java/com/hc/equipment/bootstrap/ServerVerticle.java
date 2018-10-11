@@ -3,6 +3,7 @@ package com.hc.equipment.bootstrap;
 import com.hc.equipment.device.CommonDevice;
 import com.hc.equipment.tcp.mvc.DispatcherProxy;
 import com.hc.equipment.util.BufferUtil;
+import com.hc.equipment.util.Config;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.net.NetServer;
@@ -20,16 +21,18 @@ public class ServerVerticle extends AbstractVerticle {
     private DispatcherProxy dispatcherProxy;
     @Resource
     private CommonDevice commonDevice;
+    @Resource
+    private Config config;
 
     @Override
     public void start() {
         NetServer netServer = vertx.createNetServer();
         readHandler(netServer);
-        netServer.listen(8765, "localhost", netServerAsyncResult -> {
+        netServer.listen(config.getTcpPort(), config.getTcpHost(), netServerAsyncResult -> {
             if (netServerAsyncResult.succeeded()) {
-                log.info("vert.x启动成功");
+                log.info("vert.x启动成功,端口：{}",config.getTcpPort());
             } else {
-                log.info("vert.x失败");
+                log.info("vert.x失败,端口：{}",config.getTcpPort());
             }
         });
         Runtime.getRuntime().addShutdownHook(new Thread(() -> closeHandler(netServer)));
@@ -54,6 +57,10 @@ public class ServerVerticle extends AbstractVerticle {
                     Optional.ofNullable(dispatcherProxy.routing(data)).
                             ifPresent(result -> sendBuffer(netSocket, BufferUtil.allocString(result)));
                 }));
+        netServer.exceptionHandler(throwable -> {
+            log.error(throwable.getMessage());
+            throwable.printStackTrace();
+        });
     }
 
     /**

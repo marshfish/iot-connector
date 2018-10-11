@@ -16,6 +16,12 @@ public class ClientVerticle extends AbstractVerticle {
 
         netClient.connect(8765, "localhost",
                 result -> {
+                    if (result.succeeded()) {
+                        System.out.println("启动成功");
+                    } else {
+                        System.out.println("启动失败");
+                        return;
+                    }
                     NetSocket socket = result.result();
                     socket.write("IWAP03,06000908000102,5555,30#").
                             handler(buffer -> {

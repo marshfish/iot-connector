@@ -13,5 +13,6 @@ import java.util.List;
 public class Config {
     private String basePath;
     private List<String> controllerPath = new ArrayList<>();
-
+    private int tcpPort;
+    private String tcpHost;
 }
