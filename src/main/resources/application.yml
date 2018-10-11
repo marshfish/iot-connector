@@ -1,0 +1,13 @@
+server:
+  #http服务端口
+  port: 8766
+logging:
+  level:
+      com.hc: debug
+  file: ./log/vertx.log
+  root: DEBUG
+hc:
+  commons:
+    basePath: com.hc.equipment.controller
+    controllerPath:
+      - com.hc.equipment.tcp.WriststrapController
