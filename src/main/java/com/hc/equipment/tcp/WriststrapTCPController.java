@@ -3,11 +3,14 @@ package com.hc.equipment.tcp;
 import com.hc.equipment.tcp.mvc.Instruction;
 import com.hc.equipment.tcp.mvc.InstructionManager;
 import com.hc.equipment.tcp.promise.WriststrapProtocol;
-import com.hc.equipment.tcp.rpc.AsyncHttpClientPool;
+import com.hc.equipment.tcp.rpc.AsyncHttpClient;
 import com.hc.equipment.tcp.rpc.ResponseFuture;
 import com.hc.equipment.tcp.rpc.WriststrapRestUri;
+import com.hc.equipment.util.SpringContextUtil;
 import com.hc.equipment.util.Util;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import java.text.SimpleDateFormat;
@@ -17,9 +20,8 @@ import java.util.Map;
 
 @Slf4j
 @InstructionManager
-public class WriststrapController {
-    @Resource
-    private AsyncHttpClientPool asyncHttpClientPool;
+public class WriststrapTCPController {
+    private AsyncHttpClient asyncHttpClient = SpringContextUtil.getBean(AsyncHttpClient.class);
 
     /**
      * 登陆包
@@ -43,7 +45,7 @@ public class WriststrapController {
         map.put("battery", electricity);
         map.put("imei", deviceUniqueId);
         map.put("pedometer", "250666");
-        asyncHttpClientPool.sendPost(WriststrapRestUri.BEAT_HEART.path, map, new ResponseFuture() {
+        asyncHttpClient.sendPost(WriststrapRestUri.BEAT_HEART.path, map, new ResponseFuture() {
             @Override
             public void onSuccess() {
 

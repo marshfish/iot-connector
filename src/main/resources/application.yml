@@ -10,7 +10,7 @@ hc:
   commons:
     basePath: com.hc.equipment.controller
     controllerPath:
-      - com.hc.equipment.tcp.WriststrapController
+      - com.hc.equipment.tcp.WriststrapTCPController
     tcpPort: 8765
     tcpHost: 0.0.0.0
     callbackDomain: https://hcadmin.hushijie.com.cn

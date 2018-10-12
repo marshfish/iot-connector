@@ -1,6 +1,7 @@
 package com.hc.equipment;
 
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.net.NetClient;
 import io.vertx.core.net.NetSocket;
@@ -23,12 +24,30 @@ public class ClientVerticle extends AbstractVerticle {
                         return;
                     }
                     NetSocket socket = result.result();
-                    socket.write("IWAP00353456789012345#");
-                    socket.write("IWAP03,06000908000102,5555,30#").
+                    socket.write("IWAP003534");
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    socket.write("5678901234");
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    socket.write("5#IWAP03,0600");
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    socket.write("0908000102,5555,30#").
                             handler(buffer -> {
                                 String data = buffer.getString(0, buffer.length());
                                 log.info("接收数据:{} ", data);
                             });
+                    socket.closeHandler(aVoid -> log.info("服务器拒绝连接"));
                 });
     }
 

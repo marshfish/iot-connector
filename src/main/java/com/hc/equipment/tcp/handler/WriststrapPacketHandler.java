@@ -11,6 +11,8 @@ import java.util.concurrent.ArrayBlockingQueue;
 import static com.hc.equipment.tcp.promise.WriststrapProtocol.PREFIX;
 import static com.hc.equipment.tcp.promise.WriststrapProtocol.SUFFIX;
 
+//目前解决tcp粘包半包有两种方法，一种即通过协议规定协议头和换行符，解析字符串处理粘包半包，适合字符串数据包。
+// 一种通过规定数据包buffer长度判定，适合二进制包
 @Slf4j
 public class WriststrapPacketHandler implements PacketHandler {
     private Queue<String> halfPacket = new ArrayBlockingQueue<>(1);
@@ -24,21 +26,21 @@ public class WriststrapPacketHandler implements PacketHandler {
             if (start && end) {
                 //包头尾均无问题，但可能粘包，如IWAP00353456789012345#IWAP03,06000908000102,5555,30#
                 String[] splitCommand = data.split(PREFIX);
-                for (String str : splitCommand) {
-                    command.add(PREFIX + str);
+                for (int i = 1; i < splitCommand.length; i++) {
+                    command.add(PREFIX + splitCommand[i]);
                 }
             } else if (!start && end) {
                 //包头半包包尾没问题，如53456789012345# 或 53456789012345#IWAP03,06000908000102,5555,30#
                 int i = data.indexOf(PREFIX);
                 if (i == -1) {
                     String poll = halfPacket.remove();
-                    command.add(data + poll);
+                    command.add(poll + data);
                 } else {
                     //粘包
                     String[] splitCommand = data.split(PREFIX);
                     int length = splitCommand.length;
                     String poll = halfPacket.remove();
-                    command.add(data + poll);
+                    command.add(poll + data.substring(0, i));
                     for (int j = 1; j < length; j++) {
                         command.add(PREFIX + splitCommand[j]);
                     }
@@ -52,7 +54,7 @@ public class WriststrapPacketHandler implements PacketHandler {
                     //粘包
                     String[] splitCommand = data.split(PREFIX);
                     int length = splitCommand.length;
-                    for (int j = 0; j < length - 1; j++) {
+                    for (int j = 1; j < length - 1; j++) {
                         command.add(PREFIX + splitCommand[j]);
                     }
                     halfPacket.add(PREFIX + splitCommand[length - 1]);
@@ -73,7 +75,7 @@ public class WriststrapPacketHandler implements PacketHandler {
                     for (int j = 1; j < length - 1; j++) {
                         command.add(PREFIX + splitCommand[j]);
                     }
-                    halfPacket.add(splitCommand[length - 1]);
+                    halfPacket.add(PREFIX + splitCommand[length - 1]);
                 }
             }
         } catch (IllegalStateException | NoSuchElementException e) {
@@ -84,12 +86,4 @@ public class WriststrapPacketHandler implements PacketHandler {
         return command;
     }
 
-    public static void main(String[] args) {
-        String data = "IWAP00353456789012345#IWAP03,06000908000102,5555,30#";
-        String[] iws = data.split("IW");
-        for (String str : iws) {
-            System.out.println(str);
-        }
-        System.out.println(data);
-    }
 }

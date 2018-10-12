@@ -22,5 +22,8 @@ public interface CommonDevice {
      * @return 设备唯一编号
      */
     String deviceRegister(NetSocket netSocket, String data);
-
+    /**
+     * 设备解除注册
+     */
+    void deviceUnRegister(NetSocket netSocket);
 }

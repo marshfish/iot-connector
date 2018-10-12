@@ -15,7 +15,6 @@ import org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor;
 import org.apache.http.impl.nio.reactor.IOReactorConfig;
 import org.apache.http.nio.reactor.ConnectingIOReactor;
 import org.apache.http.nio.reactor.IOReactorException;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -24,23 +23,29 @@ import java.util.Map;
 
 @Slf4j
 @Component
-public class AsyncHttpClientPool implements InitializingBean {
+public class AsyncHttpClient {
     @Resource
     private Config config;
     private CloseableHttpAsyncClient client;
 
-    public void constructorSyncHttpClient() {
+    public AsyncHttpClient() {
+        this.client = constructorSyncHttpClient();
+        this.client.start();
+    }
+
+    private CloseableHttpAsyncClient constructorSyncHttpClient() {
         //配置Reactor io线程
         IOReactorConfig ioReactorConfig = IOReactorConfig.custom().
                 setIoThreadCount(Runtime.getRuntime().availableProcessors())
                 .setSoKeepAlive(true)
                 .build();
         //设置连接池大小
-        ConnectingIOReactor ioReactor = null;
+        ConnectingIOReactor ioReactor;
         try {
             ioReactor = new DefaultConnectingIOReactor(ioReactorConfig);
         } catch (IOReactorException e) {
             e.printStackTrace();
+            throw new RuntimeException("创建httpClient reactor I/O 配置失败");
         }
         //连接池配置
         PoolingNHttpClientConnectionManager connManager = new PoolingNHttpClientConnectionManager(ioReactor);
@@ -53,19 +58,20 @@ public class AsyncHttpClientPool implements InitializingBean {
                 .setConnectionRequestTimeout(1000)
                 .build();
         //构造请求client
-        client = HttpAsyncClients.custom().
+        return  HttpAsyncClients.custom().
                 setConnectionManager(connManager)
                 .setDefaultRequestConfig(requestConfig)
                 .build();
-        client.start();
     }
 
     public void sendPost(String uri, Map<String,String> body, ResponseFuture future) {
-        HttpPost httpPost = new HttpPost(config + uri);
-        StringEntity entity = null;
+        final String url = config.getCallbackDomain() + uri;
+        HttpPost httpPost = new HttpPost(url);
+        StringEntity entity;
         try {
             entity = new StringEntity(new Gson().toJson(body));
-            entity.setContentEncoding("UTF-8");
+            entity.setContentEncoding("utf-8");
+            entity.setContentType("application/json");
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
             throw new RuntimeException("httpclient编码错误");
@@ -75,7 +81,7 @@ public class AsyncHttpClientPool implements InitializingBean {
             @Override
             public void completed(HttpResponse httpResponse) {
                 future.onSuccess();
-                log.info("调用回调接口成功");
+                log.info("调用回调接口成功：{}", url);
             }
 
             @Override
@@ -92,8 +98,4 @@ public class AsyncHttpClientPool implements InitializingBean {
         });
     }
 
-    @Override
-    public void afterPropertiesSet() throws Exception {
-        constructorSyncHttpClient();
-    }
 }

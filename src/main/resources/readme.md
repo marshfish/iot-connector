@@ -4,6 +4,7 @@
    业务逻辑在@InstructionManager注解的controller中实现即可，注解@Instruction用于标识上行协议号，
 * 默认数据格式（方法参数&返回值）均为unicode的字符串，若无需响应tcp请求给设备，方法返回值设为void即可
 * 由于SpringBoot打成jar包，难以通过jarEntry或classloader实现根据注解自动扫描，需手动再yml里配置controller位置
+  且在controller里使用springMVC及DI的相关注解均会失效（未通过spring的classLoader加载）
 * 默认http请求端口8766， tcp端口8765
 
 #手环相关   

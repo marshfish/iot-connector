@@ -10,8 +10,7 @@ import reactor.core.publisher.Mono;
 @Slf4j
 @RestController
 @RequestMapping("/vertx")
-public class WriststrapController {
-
+public class WriststrapHTTPController {
     @GetMapping("/websocket/resources")
     public Mono getConcurrentConnection() {
         return new Mono() {
