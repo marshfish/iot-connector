@@ -1,6 +1,8 @@
 package com.hc.equipment.bootstrap;
 
 import com.hc.equipment.device.CommonDevice;
+import com.hc.equipment.tcp.handler.PacketHandler;
+import com.hc.equipment.tcp.handler.WriststrapPacketHandler;
 import com.hc.equipment.tcp.mvc.DispatcherProxy;
 import com.hc.equipment.util.BufferUtil;
 import com.hc.equipment.util.Config;
@@ -24,38 +26,49 @@ public class ServerVerticle extends AbstractVerticle {
     @Resource
     private Config config;
 
+    private NetServer netServer;
+
     @Override
     public void start() {
-        NetServer netServer = vertx.createNetServer();
-        readHandler(netServer);
-        netServer.listen(config.getTcpPort(), config.getTcpHost(), netServerAsyncResult -> {
-            if (netServerAsyncResult.succeeded()) {
-                log.info("vert.x启动成功,端口：{}",config.getTcpPort());
-            } else {
-                log.info("vert.x失败,端口：{}",config.getTcpPort());
-            }
-        });
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> closeHandler(netServer)));
+        netServer = vertx.createNetServer();
+        loadConnectionProcessor();
+        loadBootstrapListener();
+        Runtime.getRuntime().addShutdownHook(new Thread(this::closeHandler));
     }
 
-    private void closeHandler(NetServer netServer) {
-        netServer.connectHandler(netSocket -> netSocket.closeHandler(v -> {
-            log.info("关闭socket连接");
-        }));
+    private void loadBootstrapListener() {
+        netServer.listen(config.getTcpPort(), config.getTcpHost(), netServerAsyncResult -> {
+            if (netServerAsyncResult.succeeded()) {
+                log.info("vert.x启动成功,端口：{}", config.getTcpPort());
+            } else {
+                log.info("vert.x失败,端口：{}", config.getTcpPort());
+            }
+        });
+    }
+
+    private void closeHandler() {
+        Optional.ofNullable(netServer).ifPresent(server ->
+                server.connectHandler(netSocket ->
+                        netSocket.closeHandler(v -> {
+                            log.info("关闭vert.x服务器");
+                        })));
     }
 
     /**
      * 接收数据
      * 响应请求
      */
-    private void readHandler(NetServer netServer) {
+    private void loadConnectionProcessor() {
         netServer.connectHandler(netSocket ->
                 netSocket.handler(buffer -> {
                     String data = buffer.getString(0, buffer.length());
                     log.info("{}接收数据:{} ", netSocket.remoteAddress().host(), data);
-                    commonDevice.deviceRegister(netSocket, data);
-                    Optional.ofNullable(dispatcherProxy.routing(data)).
-                            ifPresent(result -> sendBuffer(netSocket, BufferUtil.allocString(result)));
+                    PacketHandler packetHandler = new WriststrapPacketHandler();
+                    packetHandler.packageHandler(data).forEach(command -> {
+                        String deviceUniqueId = commonDevice.deviceRegister(netSocket, command);
+                        Optional.ofNullable(dispatcherProxy.routing(command, deviceUniqueId)).
+                                ifPresent(result -> sendBuffer(netSocket, BufferUtil.allocString(result)));
+                    });
                 }));
         netServer.exceptionHandler(throwable -> {
             log.error(throwable.getMessage());

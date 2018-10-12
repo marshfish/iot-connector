@@ -15,4 +15,5 @@ public class Config {
     private List<String> controllerPath = new ArrayList<>();
     private int tcpPort;
     private String tcpHost;
+    private String callbackDomain;
 }

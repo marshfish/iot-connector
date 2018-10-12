@@ -5,54 +5,58 @@ import io.vertx.core.net.NetSocket;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-/**
- * 包头： IW
- * 协议号：上行(设备服务器) AP[两位数字]，下行(服务器设备) BP[两位数字]，数字一样表示数据包及数据包响应
- * 参数：数据包内容
- * 结束符：#
- * <p>
- * 所有与中文有关，例如地址，都使用UNICODE编码
- * 数据包中所有标点符号(除了下发地址中的标点)均为英文半角。
- */
-
 @Component
 @Slf4j
 public class WriststrapDevice implements CommonDevice {
+    //netSocket.hashCode->NetSocket
     private ConcurrentHashMap<String, NetSocket> registry = new ConcurrentHashMap<>();
+    //deviceUniqueID->netSocket.hashCode
+    private ConcurrentHashMap<String, String> association = new ConcurrentHashMap<>();
     private Lock lock = new ReentrantLock();
 
-    /**
-     * 获取手环imei
-     */
-    private String getUniqueNumber(String data) {
+    @Override
+    public String getDeviceUniqueId(String data) {
         return data.substring(6, data.length() - 1);
     }
 
-    /**
-     * 获取该指令协议号
-     */
     @Override
     public String getProtocolNumber(String data) {
         return data.substring(2, 6);
     }
 
     @Override
-    public void deviceRegister(NetSocket netSocket, String data) {
+    public String deviceRegister(NetSocket netSocket, String data) {
         String protocolNumber = getProtocolNumber(data);
         if (WriststrapProtocol.LOGIN.equals(protocolNumber)) {
             lock.lock();
+            String deviceUniqueId = getDeviceUniqueId(data);
             try {
-                if (!registry.containsKey(data)) {
-                    registry.put(getUniqueNumber(data), netSocket);
+                if (!association.containsKey(deviceUniqueId)) {
+                    String netSocketID = String.valueOf(netSocket.hashCode());
+                    association.put(deviceUniqueId, netSocketID);
+                    registry.put(netSocketID, netSocket);
                     log.info("手环：{} 登陆成功", netSocket.remoteAddress().host());
+                } else {
+                    throw new RuntimeException("无法登陆，设备注册表不存在该设备,ip:" +
+                            netSocket.remoteAddress().host() + "data:{}" + data);
                 }
             } finally {
                 lock.unlock();
             }
+            return deviceUniqueId;
+        } else {
+            //TODO 数据结构优化
+            for (Map.Entry<String, String> entry : association.entrySet()) {
+                if (entry.getValue().equals(String.valueOf(netSocket.hashCode()))) {
+                    return entry.getKey();
+                }
+            }
+            throw new RuntimeException("该设备尚未登陆，拒绝连接");
         }
     }
 }

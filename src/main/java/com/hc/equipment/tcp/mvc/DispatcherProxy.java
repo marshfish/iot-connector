@@ -3,6 +3,7 @@ package com.hc.equipment.tcp.mvc;
 import com.hc.equipment.device.CommonDevice;
 import com.hc.equipment.util.Config;
 import com.hc.equipment.util.ReflectionUtil;
+import io.vertx.core.net.NetSocket;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +21,7 @@ public class DispatcherProxy {
     @Resource
     private CommonDevice commonDevice;
     @Resource
-    private  Config config;
+    private Config config;
 
     private static final ConcurrentHashMap<Class<?>, Object> BEAN_MAP = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, InvokeEntry> INSTRUCTION_MAPPING = new ConcurrentHashMap<>();
@@ -54,11 +55,12 @@ public class DispatcherProxy {
         }
     }
 
-    public String routing(String data) {
+    public String routing(String data, String deviceUniqueId) {
         String protocolNumber = commonDevice.getProtocolNumber(data);
         InvokeEntry invokeEntry;
         if ((invokeEntry = INSTRUCTION_MAPPING.get(protocolNumber)) != null) {
-            return (String) ReflectionUtil.invokeMethod(invokeEntry.getObject(), invokeEntry.getMethod(), data);
+            return (String) ReflectionUtil.invokeMethod(invokeEntry.getObject(),
+                    invokeEntry.getMethod(), deviceUniqueId, data);
         } else {
             log.warn("无法识别的协议号：{}", data);
             return null;

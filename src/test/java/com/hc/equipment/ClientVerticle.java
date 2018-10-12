@@ -23,6 +23,7 @@ public class ClientVerticle extends AbstractVerticle {
                         return;
                     }
                     NetSocket socket = result.result();
+                    socket.write("IWAP00353456789012345#");
                     socket.write("IWAP03,06000908000102,5555,30#").
                             handler(buffer -> {
                                 String data = buffer.getString(0, buffer.length());

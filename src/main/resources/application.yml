@@ -13,3 +13,4 @@ hc:
       - com.hc.equipment.tcp.WriststrapController
     tcpPort: 8765
     tcpHost: 0.0.0.0
+    callbackDomain: https://hcadmin.hushijie.com.cn
