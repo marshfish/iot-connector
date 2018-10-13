@@ -19,6 +19,7 @@ import javax.annotation.Resource;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -27,7 +28,7 @@ public class ServerVerticle extends AbstractVerticle {
     private DispatcherProxy dispatcherProxy = SpringContextUtil.getBean(DispatcherProxy.class);
     private CommonDevice commonDevice = SpringContextUtil.getBean(CommonDevice.class);
     private Config config = SpringContextUtil.getBean(Config.class);
-
+    private static AtomicInteger instance = new AtomicInteger(1);
     private NetServer netServer;
     private Map<String, PacketHandler> packetHandlerMap = new ConcurrentHashMap<>();
     private Lock handlerLock = new ReentrantLock();
@@ -43,19 +44,15 @@ public class ServerVerticle extends AbstractVerticle {
     private void loadBootstrapListener() {
         netServer.listen(config.getTcpPort(), config.getTcpHost(), netServerAsyncResult -> {
             if (netServerAsyncResult.succeeded()) {
-                log.info("vert.x启动成功,端口：{}", config.getTcpPort());
+                log.info("vert.x实例{}启动成功,端口：{}", instance.getAndIncrement(), config.getTcpPort());
             } else {
-                log.info("vert.x失败,端口：{}", config.getTcpPort());
+                log.info("vert.x实例{}启动后失败,端口：{}", instance.getAndIncrement(), config.getTcpPort());
             }
         });
     }
 
     private void closeHandler() {
-        Optional.ofNullable(netServer).ifPresent(server ->
-                server.connectHandler(netSocket ->
-                        netSocket.closeHandler(v -> {
-                            log.info("关闭vert.x服务器");
-                        })));
+        //TODO 资源清理
     }
 
     /**
@@ -104,9 +101,6 @@ public class ServerVerticle extends AbstractVerticle {
         return packetHandler;
     }
 
-    /**
-     * 发送数据
-     */
     private void writeHandler(String data, NetSocket netSocket) {
         sendBuffer(netSocket, BufferUtil.allocString(data));
     }

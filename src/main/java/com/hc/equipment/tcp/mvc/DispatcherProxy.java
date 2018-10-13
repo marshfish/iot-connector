@@ -3,7 +3,6 @@ package com.hc.equipment.tcp.mvc;
 import com.hc.equipment.device.CommonDevice;
 import com.hc.equipment.util.Config;
 import com.hc.equipment.util.ReflectionUtil;
-import io.vertx.core.net.NetSocket;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +13,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 @Slf4j
 @Service
@@ -24,7 +24,7 @@ public class DispatcherProxy {
     private Config config;
 
     private static final ConcurrentHashMap<Class<?>, Object> BEAN_MAP = new ConcurrentHashMap<>();
-    private static final ConcurrentHashMap<String, InvokeEntry> INSTRUCTION_MAPPING = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, MappingEntry> INSTRUCTION_MAPPING = new ConcurrentHashMap<>();
 
     public void loadMVC() {
         List<String> controllerPath = config.getControllerPath();
@@ -48,23 +48,26 @@ public class DispatcherProxy {
                 Instruction instruction;
                 if ((instruction = method.getAnnotation(Instruction.class)) != null) {
                     String value = instruction.value();
-                    INSTRUCTION_MAPPING.put(value, new InvokeEntry(Optional.ofNullable(BEAN_MAP.get(cls))
+                    INSTRUCTION_MAPPING.put(value, new MappingEntry(Optional.ofNullable(BEAN_MAP.get(cls))
                             .orElseThrow(RuntimeException::new), method));
                 }
             }
         }
     }
 
-    public String routing(String data, String deviceUniqueId) {
-        String protocolNumber = commonDevice.getProtocolNumber(data);
-        InvokeEntry invokeEntry;
-        if ((invokeEntry = INSTRUCTION_MAPPING.get(protocolNumber)) != null) {
-            return (String) ReflectionUtil.invokeMethod(invokeEntry.getObject(),
-                    invokeEntry.getMethod(), deviceUniqueId, data);
-        } else {
-            log.warn("无法识别的协议号：{}", data);
-            return null;
-        }
+    public String routing(String instruction, String deviceUniqueId) {
+        return Optional.ofNullable(deviceUniqueId).
+                map(mappingEntry -> instruction).
+                map(data -> commonDevice.getProtocolNumber(instruction)).
+                map(INSTRUCTION_MAPPING::get).
+                map(mappingEntry -> (String) ReflectionUtil.invokeMethod(
+                        mappingEntry.getObject(),
+                        mappingEntry.getMethod(),
+                        new ParamEntry(deviceUniqueId, instruction))).
+                orElseGet(() -> {
+                    log.warn("无法识别的协议号：{}", instruction);
+                    return null;
+                });
     }
 
 }

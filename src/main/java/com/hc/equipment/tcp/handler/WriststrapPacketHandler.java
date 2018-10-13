@@ -3,6 +3,7 @@ package com.hc.equipment.tcp.handler;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
@@ -19,6 +20,9 @@ public class WriststrapPacketHandler implements PacketHandler {
 
     @Override
     public List<String> packageHandler(String data) {
+        if (data == null) {
+            return Collections.emptyList();
+        }
         boolean start = data.startsWith(PREFIX);
         boolean end = data.endsWith(SUFFIX);
         List<String> command = new ArrayList<>();

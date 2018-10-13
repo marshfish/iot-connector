@@ -2,6 +2,7 @@ package com.hc.equipment.tcp.rpc;
 
 import com.google.gson.Gson;
 import com.hc.equipment.util.Config;
+import com.hc.equipment.util.SpringContextUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.config.RequestConfig;
@@ -15,25 +16,21 @@ import org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor;
 import org.apache.http.impl.nio.reactor.IOReactorConfig;
 import org.apache.http.nio.reactor.ConnectingIOReactor;
 import org.apache.http.nio.reactor.IOReactorException;
-import org.springframework.stereotype.Component;
 
-import javax.annotation.Resource;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
 
 @Slf4j
-@Component
 public class AsyncHttpClient {
-    @Resource
-    private Config config;
-    private CloseableHttpAsyncClient client;
+    private static Config config = SpringContextUtil.getBean(Config.class);
+    private static CloseableHttpAsyncClient client;
 
-    public AsyncHttpClient() {
-        this.client = constructorSyncHttpClient();
-        this.client.start();
+    static {
+        client = constructorSyncHttpClient();
+        client.start();
     }
 
-    private CloseableHttpAsyncClient constructorSyncHttpClient() {
+    private static CloseableHttpAsyncClient constructorSyncHttpClient() {
         //配置Reactor io线程
         IOReactorConfig ioReactorConfig = IOReactorConfig.custom().
                 setIoThreadCount(Runtime.getRuntime().availableProcessors())
@@ -58,18 +55,24 @@ public class AsyncHttpClient {
                 .setConnectionRequestTimeout(1000)
                 .build();
         //构造请求client
-        return  HttpAsyncClients.custom().
+        return HttpAsyncClients.custom().
                 setConnectionManager(connManager)
                 .setDefaultRequestConfig(requestConfig)
                 .build();
     }
 
-    public void sendPost(String uri, Map<String,String> body, ResponseFuture future) {
+    public static void sendPost(String uri, Map<String, String> body) {
+        String param = new Gson().toJson(body);
+        sendPost(uri, param, new DefaultHttpResponseFuture(uri, param));
+    }
+
+    public static void sendPost(String uri, String body, FutureCallback<HttpResponse> future) {
         final String url = config.getCallbackDomain() + uri;
         HttpPost httpPost = new HttpPost(url);
+        String param = new Gson().toJson(body);
         StringEntity entity;
         try {
-            entity = new StringEntity(new Gson().toJson(body));
+            entity = new StringEntity(param);
             entity.setContentEncoding("utf-8");
             entity.setContentType("application/json");
         } catch (UnsupportedEncodingException e) {
@@ -77,25 +80,7 @@ public class AsyncHttpClient {
             throw new RuntimeException("httpclient编码错误");
         }
         httpPost.setEntity(entity);
-        client.execute(httpPost, new FutureCallback<HttpResponse>() {
-            @Override
-            public void completed(HttpResponse httpResponse) {
-                future.onSuccess();
-                log.info("调用回调接口成功：{}", url);
-            }
-
-            @Override
-            public void failed(Exception e) {
-                future.onFail();
-                log.warn("访问接口失败，uri：{},Exception:{}", httpPost.getURI(), e);
-            }
-
-            @Override
-            public void cancelled() {
-                future.onCancel();
-                log.warn("调用取消");
-            }
-        });
+        client.execute(httpPost, future);
     }
 
 }
