@@ -11,6 +11,8 @@ hc:
     basePath: com.hc.equipment.controller
     controllerPath:
       - com.hc.equipment.tcp.WriststrapTCPController
+      - com.hc.equipment.http.WriststrapHTTPController
+    host: 0.0.0.0
     tcpPort: 8765
-    tcpHost: 0.0.0.0
+    httpPort: 8766
     callbackDomain: https://hcadmin.hushijie.com.cn

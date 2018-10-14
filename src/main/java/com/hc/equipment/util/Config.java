@@ -13,7 +13,8 @@ import java.util.List;
 public class Config {
     private String basePath;
     private List<String> controllerPath = new ArrayList<>();
+    private String host;
     private int tcpPort;
-    private String tcpHost;
+    private int httpPort;
     private String callbackDomain;
 }

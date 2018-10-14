@@ -10,15 +10,13 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 /**
  * 手环设备注册表
  */
 @Component
 @Slf4j
-public class WriststrapDevice implements CommonDevice {
-    private ConcurrentHashMap<String, SocketWarpper> registry = new ConcurrentHashMap<>();
+public class WriststrapDevice extends AbsSocketManager {
 
     @Override
     public String getDeviceUniqueId(String data) {
@@ -34,12 +32,12 @@ public class WriststrapDevice implements CommonDevice {
     public String deviceRegister(NetSocket netSocket, String data) {
         return Optional.ofNullable(getProtocolNumber(data)).map(protocolNumber -> {
             if (WriststrapProtocol.LOGIN.equals(protocolNumber)) {
-                return Optional.ofNullable(getProtocolNumber(data)).map(id -> {
+                return Optional.ofNullable(getDeviceUniqueId(data)).map(deviceId -> {
                     String netSocketId = String.valueOf(netSocket.hashCode());
-                    registry.put(id, new SocketWarpper(netSocketId, netSocket));
+                    registry.put(deviceId, new SocketWarpper(netSocketId, netSocket));
                     log.info("手环：{} 注册 && 登陆成功，uniqueId：{},socketId:{}",
-                            netSocket.remoteAddress().host(), id, netSocketId);
-                    return id;
+                            netSocket.remoteAddress().host(), deviceId, netSocketId);
+                    return deviceId;
                 }).orElse(null);
             } else {
                 return registry.entrySet().

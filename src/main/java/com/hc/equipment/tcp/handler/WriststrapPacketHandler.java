@@ -1,9 +1,9 @@
 package com.hc.equipment.tcp.handler;
 
+import io.vertx.core.buffer.Buffer;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
@@ -12,20 +12,21 @@ import java.util.concurrent.ArrayBlockingQueue;
 import static com.hc.equipment.tcp.promise.WriststrapProtocol.PREFIX;
 import static com.hc.equipment.tcp.promise.WriststrapProtocol.SUFFIX;
 
-//目前解决tcp粘包半包有两种方法，一种即通过协议规定协议头和换行符，解析字符串处理粘包半包，适合字符串数据包。
-// 一种通过规定数据包buffer长度判定，适合二进制包
+/**
+ * 自定义粘包半包处理器
+ */
 @Slf4j
 public class WriststrapPacketHandler implements PacketHandler {
     private Queue<String> halfPacket = new ArrayBlockingQueue<>(1);
-
+    private List<String> command = new ArrayList<>(5);
     @Override
-    public List<String> packageHandler(String data) {
+    public List<String> packageHandler(Buffer buffer) {
+        String data = buffer.getString(0, buffer.length());
         if (data == null) {
-            return Collections.emptyList();
+            return command;
         }
         boolean start = data.startsWith(PREFIX);
         boolean end = data.endsWith(SUFFIX);
-        List<String> command = new ArrayList<>();
         try {
             if (start && end) {
                 //包头尾均无问题，但可能粘包，如IWAP00353456789012345#IWAP03,06000908000102,5555,30#

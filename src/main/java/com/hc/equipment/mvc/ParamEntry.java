@@ -1,4 +1,4 @@
-package com.hc.equipment.tcp.mvc;
+package com.hc.equipment.mvc;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;

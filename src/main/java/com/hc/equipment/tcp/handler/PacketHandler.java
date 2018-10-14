@@ -1,10 +1,12 @@
 package com.hc.equipment.tcp.handler;
 
-        import java.util.List;
+import io.vertx.core.buffer.Buffer;
+
+import java.util.Collection;
 
 /**
  * 粘包半包相关处理
  */
 public interface PacketHandler {
-    List<String> packageHandler(String data);
+    Collection<String> packageHandler(Buffer buffer);
 }

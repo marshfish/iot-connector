@@ -1,15 +1,11 @@
-package com.hc.equipment.tcp.mvc;
+package com.hc.equipment.mvc;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target(value = ElementType.METHOD)
+@Target(value = ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Instruction {
-    /**
-     * 协议号
-     */
-    String value();
+public @interface TcpInstructionManager {
 }

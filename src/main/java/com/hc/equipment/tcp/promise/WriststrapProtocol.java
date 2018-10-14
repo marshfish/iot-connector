@@ -10,4 +10,6 @@ public class WriststrapProtocol {
     public static final String HEART_BEAT = "IWBP03#";
     public static final String HEART_RATE = "IWBP49#";
     public static final String BLOOD = "IWBPHT#";
+    public static final String MEASURE_HEART_RATE = "BPXL";
+    public static final String MEASURE_HEART_PRESSURE = "BPXY ";
 }
