@@ -1,5 +1,6 @@
 package com.hc.equipment.util;
 
+import com.hc.equipment.exception.GatewayException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Field;
@@ -35,11 +36,14 @@ public final class ReflectionUtil {
      */
     public static Object invokeMethod(Object obj, Method method, Object... args) {
         method.setAccessible(true);
-        Object result = null;
+        Object result;
         try {
             result = method.invoke(obj, args);
-        } catch (IllegalAccessException | InvocationTargetException e) {
+        } catch (InvocationTargetException e) {
+            throw (RuntimeException) e.getTargetException();
+        } catch (IllegalAccessException e) {
             e.printStackTrace();
+            throw new RuntimeException("反射调用权限异常");
         }
         return result;
     }

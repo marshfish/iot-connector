@@ -17,4 +17,5 @@ public class Config {
     private int tcpPort;
     private int httpPort;
     private String callbackDomain;
+    private int maxHTTPIdleTime;
 }

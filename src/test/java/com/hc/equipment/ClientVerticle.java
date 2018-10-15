@@ -36,12 +36,13 @@ public class ClientVerticle extends AbstractVerticle {
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    socket.write("IWAP03,0600");
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
+//                    socket.write("IWAP03,0600");
+//                    try {
+//                        Thread.sleep(1000);
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                    }
+                    socket.write("IWAPXL,080835#");
                     socket.write("0908000102,5555,30#").
                             handler(buffer -> {
                                 String data = buffer.getString(0, buffer.length());

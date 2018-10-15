@@ -1,6 +1,6 @@
 package com.hc.equipment.exception;
 
-public class ConnectRefuseException extends RuntimeException {
+public class ConnectRefuseException extends GatewayException {
     public ConnectRefuseException() {
     }
 

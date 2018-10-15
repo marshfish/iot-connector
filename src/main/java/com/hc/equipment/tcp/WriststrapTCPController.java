@@ -1,5 +1,6 @@
 package com.hc.equipment.tcp;
 
+import com.hc.equipment.bootstrap.HTTPVerticle;
 import com.hc.equipment.mvc.TcpInstruction;
 import com.hc.equipment.mvc.TcpInstructionManager;
 import com.hc.equipment.mvc.ParamEntry;
@@ -7,14 +8,16 @@ import com.hc.equipment.tcp.promise.WriststrapProtocol;
 import com.hc.equipment.tcp.rpc.AsyncHttpClient;
 import com.hc.equipment.tcp.rpc.WriststrapRestUri;
 import com.hc.equipment.util.Util;
-import io.vertx.core.Vertx;
 import lombok.extern.slf4j.Slf4j;
 
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
-
+/**
+ * tcp -> http
+ */
 @Slf4j
 @TcpInstructionManager
 public class WriststrapTCPController {
@@ -25,7 +28,12 @@ public class WriststrapTCPController {
     public String login(ParamEntry paramEntry) {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
         String format = simpleDateFormat.format(System.currentTimeMillis());
-        return Util.buildParam(WriststrapProtocol.PREFIX, WriststrapProtocol.BP00, WriststrapProtocol.COMMA, format, WriststrapProtocol.COMMA, WriststrapProtocol.TIME_ZONE);
+        return Util.buildParam(WriststrapProtocol.PREFIX,
+                WriststrapProtocol.BP00,
+                WriststrapProtocol.COMMA,
+                format,
+                WriststrapProtocol.COMMA,
+                WriststrapProtocol.TIME_ZONE);
     }
 
     /**
@@ -60,7 +68,15 @@ public class WriststrapTCPController {
     @TcpInstruction("APHT")
     public String blood(ParamEntry paramEntry) {
         String[] split = paramEntry.getInstruction().split(WriststrapProtocol.COMMA);
-        log.info("血压测量结果--心率：{}，高压：{}，低压：{}", split[1], split[2], split[3].substring(0, split[3].length() - 1));
+        log.info("血压测量结果--心率：{}，高压：{}，低压：{}", split[1], split[2],
+                split[3].substring(0, split[3].length() - 1));
+        Map<String, String> param = new HashMap<>();
+        param.put("imei", paramEntry.getUniqueId());
+        param.put("heartRate", split[1]);
+        param.put("sdp", split[2]);
+        param.put("dbp", split[3].substring(0, split[3].length() - 1));
+        param.put("oxygen", "100");
+        AsyncHttpClient.sendPost(WriststrapRestUri.HEALTH.path, param);
         return WriststrapProtocol.BLOOD;
     }
 
@@ -68,8 +84,9 @@ public class WriststrapTCPController {
      * 下行心率测量响应
      */
     @TcpInstruction("APXL")
-    public String heartRateResponse(ParamEntry paramEntry) {
-        String instruction = paramEntry.getInstruction();
-        return "";
+    public void heartRateResponse(ParamEntry paramEntry) {
+        Optional.ofNullable(paramEntry.getInstruction()).
+                map(instruction -> instruction.substring(7, instruction.length() - 1)).
+                ifPresent(uuid -> HTTPVerticle.eventBus.publish(uuid, Boolean.TRUE));
     }
 }

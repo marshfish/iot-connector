@@ -7,7 +7,7 @@ import java.util.List;
 
 @Slf4j
 @Data
-public class WriststrapSetSOSDTO extends WriststrapDTO {
+public class WriststrapSetSOSDTO extends EquipmentDTO {
     @NotNull
     private List<String> sosContact;
 }

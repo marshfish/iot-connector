@@ -1,15 +1,14 @@
 package com.hc.equipment.bootstrap;
 
 import com.hc.equipment.device.DeviceSocketManager;
-import com.hc.equipment.exception.ConnectRefuseException;
-import com.hc.equipment.tcp.handler.PacketHandlerFactory;
 import com.hc.equipment.mvc.DispatcherProxy;
+import com.hc.equipment.tcp.handler.PacketHandlerFactory;
 import com.hc.equipment.util.Config;
-import com.hc.equipment.util.RemotingUtil;
 import com.hc.equipment.util.SpringContextUtil;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetServerOptions;
+import io.vertx.core.net.NetSocket;
 import io.vertx.core.streams.Pump;
 import lombok.extern.slf4j.Slf4j;
 
@@ -27,15 +26,9 @@ public class TCPVerticle extends AbstractVerticle {
 
     @Override
     public void start() {
-        if (RemotingUtil.isLinuxPlatform()) {
-            //TODO tcp参数设置
-            netServer = vertx.createNetServer(new NetServerOptions());
-        } else {
-            netServer = vertx.createNetServer();
-        }
+        netServer = vertx.createNetServer(new NetServerOptions());
         loadConnectionProcessor();
         loadBootstrapListener();
-        Runtime.getRuntime().addShutdownHook(new Thread(this::closeHandler));
     }
 
     private void loadBootstrapListener() {
@@ -48,7 +41,9 @@ public class TCPVerticle extends AbstractVerticle {
         });
     }
 
-    private void closeHandler() {
+
+    @Override
+    public void stop() throws Exception {
         //TODO 资源清理
     }
 
@@ -62,23 +57,31 @@ public class TCPVerticle extends AbstractVerticle {
             Pump.pump(netSocket, netSocket).start();
             netSocket.handler(buffer -> {
                 log.info("{}接收数据:{} ", netSocket.remoteAddress().host(), buffer.getString(0, buffer.length()));
-                PacketHandlerFactory.buildPacketHandler(netSocket).packageHandler(buffer).forEach(command -> {
-                    String deviceUniqueId;
-                    deviceUniqueId = deviceSocketManager.deviceRegister(netSocket, command);
-                    Optional.ofNullable(dispatcherProxy.routingTCP(command, deviceUniqueId)).
-                            ifPresent(result -> deviceSocketManager.writeString(netSocket, result));
-                });
-            }).closeHandler(aVoid -> {
-                log.info("断开TCP连接：{}", netSocket.remoteAddress().host());
-                deviceSocketManager.deviceUnRegister(netSocket);
-                PacketHandlerFactory.removePackageHandler(netSocket);
+                try {
+                    PacketHandlerFactory.buildPacketHandler(netSocket).packageHandler(buffer).forEach(command -> {
+                        String deviceUniqueId;
+                        deviceUniqueId = deviceSocketManager.deviceRegister(netSocket, command);
+                        Optional.ofNullable(dispatcherProxy.routingTCP(command, deviceUniqueId)).
+                                ifPresent(result -> deviceSocketManager.writeString(netSocket, result));
+                    });
+                } catch (Exception e) {
+                    log.error("TCP数据处理异常{}", e);
+                    clearOnException(netSocket,false);
+                }
             }).exceptionHandler(throwable -> {
                 log.info("TCP连接异常，关闭连接：{}，异常：{}", netSocket.remoteAddress().host(), throwable);
-                netSocket.close();
-                deviceSocketManager.deviceUnRegister(netSocket);
-                PacketHandlerFactory.removePackageHandler(netSocket);
+                clearOnException(netSocket,true);
             });
-        }).exceptionHandler(throwable -> log.error("服务器异常:{}", throwable.getMessage()));
+        }).exceptionHandler(throwable -> log.error("TCP服务器异常:{}", throwable));
+    }
+
+    private void clearOnException(NetSocket netSocket, boolean disConnect) {
+        deviceSocketManager.deviceUnRegister(netSocket);
+        PacketHandlerFactory.removePackageHandler(netSocket);
+        if(disConnect){
+            log.info("断开TCP连接：{}", netSocket.remoteAddress().host());
+            netSocket.close();
+        }
     }
 
 }

@@ -21,12 +21,9 @@ public class BaseResult {
         return SingletonResult.baseResult;
     }
 
-    public static BaseResult getFailFast() {
-        return SingletonResult.failFastResult;
-    }
+
 
     private static class SingletonResult {
         private static final BaseResult baseResult = new BaseResult();
-        private static final BaseResult failFastResult = new BaseResult(500, "服务器异常");
     }
 }

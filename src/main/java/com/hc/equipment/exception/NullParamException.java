@@ -1,6 +1,6 @@
 package com.hc.equipment.exception;
 
-public class NullParamException extends RuntimeException {
+public class NullParamException extends GatewayException {
     private static final String NULL_TIP = "参数%s为空";
 
     public NullParamException() {

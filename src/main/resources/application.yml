@@ -16,3 +16,4 @@ hc:
     tcpPort: 8765
     httpPort: 8766
     callbackDomain: https://hcadmin.hushijie.com.cn
+    maxHTTPIdleTime: 4
