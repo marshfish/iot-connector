@@ -88,7 +88,9 @@ public class WriststrapPacketHandler implements PacketHandler {
             log.error("包处理队列异常,清空队列,{}", e);
             throw e;
         }
-        return command;
+        ArrayList<String> commands = new ArrayList<>(command);
+        command.clear();
+        return commands;
     }
 
 }

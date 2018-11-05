@@ -1,10 +1,15 @@
 package com.hc.equipment.util;
 
+import com.hc.equipment.EquipmentTcpApplication;
 import com.hc.equipment.exception.NullParamException;
-import com.hc.equipment.http.dto.NotNull;
+import com.hc.equipment.mvc.NotNull;
+import io.vertx.core.eventbus.DeliveryOptions;
+import io.vertx.core.http.CaseInsensitiveHeaders;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.util.DigestUtils;
 
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -14,7 +19,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 @Slf4j
-public class Util {
+public class CommonUtil {
     private static final String GET = "get";
 
     public static String buildParam(String... strings) {
@@ -25,7 +30,37 @@ public class Util {
         return stringBuilder.toString();
     }
 
-    public static void validDTOEmpty(Object dto) {
+    public String MD5(String message) {
+        try {
+            return DigestUtils.md5DigestAsHex(message.getBytes("UTF-8"));
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public void validEmpty(String paramName, Object value) {
+        doValid(paramName, value);
+    }
+
+    private void doValid(String fieldName, Object invoke) {
+        if (invoke == null) {
+            throw new NullParamException(fieldName);
+        }
+        if (invoke instanceof String) {
+            if (StringUtils.EMPTY.equals(((String) invoke).trim())) {
+                throw new NullParamException(fieldName);
+            }
+        }
+        if (invoke instanceof Collection) {
+            if (((Collection) invoke).size() == 0) {
+                throw new NullParamException(fieldName);
+            }
+        }
+    }
+
+    //TODO 性能优化
+    public void validDTOEmpty(Object dto) {
         if (null == dto) {
             throw new NullParamException("DTO");
         }
@@ -52,19 +87,9 @@ public class Util {
                 log.warn("valid param exception:" + e.getMessage(), e);
                 return;
             }
-            if (invoke == null) {
-                throw new NullParamException(fieldName);
-            }
-            if (invoke instanceof String) {
-                if (StringUtils.EMPTY.equals(((String) invoke).trim())) {
-                    throw new NullParamException(fieldName);
-                }
-            }
-            if (invoke instanceof Collection) {
-                if (((Collection) invoke).size() == 0) {
-                    throw new NullParamException(fieldName);
-                }
-            }
+            doValid(fieldName, invoke);
         }
     }
+
+
 }

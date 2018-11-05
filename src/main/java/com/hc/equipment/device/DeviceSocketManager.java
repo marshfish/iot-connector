@@ -9,33 +9,33 @@ import java.util.Optional;
  */
 public interface DeviceSocketManager {
     /**
-     * 获取请求上行协议号
+     * 根据指令获取请求上行协议号
      */
     String getProtocolNumber(String data);
 
     /**
-     * 获取设备唯一编号
+     * 根据指令获取设备唯一编号
      */
-    String getDeviceUniqueId(String data);
+    String getEquipmentId(String data);
 
     /**
-     * 设备注册
+     * 设备登陆
      *
      * @param netSocket socket
      * @param data      数据
      * @return 设备唯一编号
      */
-    String deviceRegister(NetSocket netSocket, String data);
+    String deviceLogin(NetSocket netSocket, String data);
 
     /**
-     * 设备解除注册
+     * 设备登出
      */
-    void deviceUnRegister(NetSocket netSocket);
+    void deviceLogout(NetSocket netSocket);
 
     /**
      * 获取设备socket连接
      */
-    Optional<NetSocket> getDeviceNetSocket(String uniqueId);
+    Optional<NetSocket> getDeviceNetSocket(String equipmentId);
 
     /**
      * 写入字符串

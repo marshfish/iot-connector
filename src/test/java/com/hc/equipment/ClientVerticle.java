@@ -15,7 +15,7 @@ public class ClientVerticle extends AbstractVerticle {
         log.info("客户端启动");
         NetClient netClient = vertx.createNetClient();
 
-        netClient.connect(8765, "localhost",
+        netClient.connect(8765, "127.0.0.1",
                 result -> {
                     if (result.succeeded()) {
                         System.out.println("启动成功");
@@ -31,20 +31,20 @@ public class ClientVerticle extends AbstractVerticle {
                         e.printStackTrace();
                     }
                     socket.write("56789012345#");
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-//                    socket.write("IWAP03,0600");
 //                    try {
 //                        Thread.sleep(1000);
 //                    } catch (InterruptedException e) {
 //                        e.printStackTrace();
 //                    }
+                    socket.write("IWAP03,0600");
+//                    try {
+//                        Thread.sleep(1000);
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                    }
+                    socket.write("0908000102,5555,30#");
                     socket.write("IWAPXL,080835#");
-                    socket.write("0908000102,5555,30#").
-                            handler(buffer -> {
+                    socket.handler(buffer -> {
                                 String data = buffer.getString(0, buffer.length());
                                 log.info("接收数据:{} ", data);
                             });

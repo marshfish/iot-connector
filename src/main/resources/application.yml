@@ -1,6 +1,3 @@
-server:
-  #http服务端口
-  port: 8766
 logging:
   level:
       com.hc: debug
@@ -8,12 +5,15 @@ logging:
   root: DEBUG
 hc:
   commons:
-    basePath: com.hc.equipment.controller
-    controllerPath:
-      - com.hc.equipment.tcp.WriststrapTCPController
-      - com.hc.equipment.http.WriststrapHTTPController
+    artifactId: wriststrap  
+    instanceId: wriststrap_1 #集群节点名，部署时注意要唯一
     host: 0.0.0.0
     tcpPort: 8765
-    httpPort: 8766
-    callbackDomain: https://hcadmin.hushijie.com.cn
-    maxHTTPIdleTime: 4
+    callbackDomain: https://hctest.hushijie.com.cn
+    maxBusBlockingTime: 1500
+    eventBusThreadNumber: 100
+    eventBusQueueSize: 1
+
+#配置中心配置项
+#callbackDomain
+#instanceNumber

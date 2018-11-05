@@ -1,15 +1,22 @@
 package com.hc.equipment.device;
 
+import com.google.gson.Gson;
+import com.hc.equipment.connector.MqConnector;
+import com.hc.equipment.connector.TransportEventEntry;
 import com.hc.equipment.exception.ConnectRefuseException;
 import com.hc.equipment.tcp.promise.WriststrapProtocol;
+import com.hc.equipment.type.EquipmentTypeEnum;
+import com.hc.equipment.type.EventTypeEnum;
+import com.hc.equipment.util.Config;
+import com.hc.equipment.util.IdGenerator;
 import io.vertx.core.net.NetSocket;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Resource;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 手环设备注册表
@@ -17,9 +24,15 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 @Slf4j
 public class WriststrapDevice extends AbsSocketManager {
+    @Resource
+    private Gson gson;
+    @Resource
+    private MqConnector mqConnector;
+    @Resource
+    private Config config;
 
     @Override
-    public String getDeviceUniqueId(String data) {
+    public String getEquipmentId(String data) {
         return Optional.ofNullable(data).map(v -> data.substring(6, data.length() - 1)).orElse(null);
     }
 
@@ -27,20 +40,39 @@ public class WriststrapDevice extends AbsSocketManager {
     public String getProtocolNumber(String data) {
         return Optional.ofNullable(data).map(v -> data.substring(2, 6)).orElse(null);
     }
+
     //允许同一设备重复登陆
     @Override
-    public String deviceRegister(NetSocket netSocket, String data) {
-        return Optional.ofNullable(getProtocolNumber(data)).map(protocolNumber -> {
+    public String deviceLogin(NetSocket netSocket, String data) {
+        String protocolNumber;
+        String eqId = null;
+        if ((protocolNumber = getProtocolNumber(data)) != null) {
             if (WriststrapProtocol.LOGIN.equals(protocolNumber)) {
-                return Optional.ofNullable(getDeviceUniqueId(data)).map(deviceId -> {
-                    String netSocketId = String.valueOf(netSocket.hashCode());
-                    registry.put(deviceId, new SocketWarpper(netSocketId, netSocket));
-                    log.info("手环：{} 注册 && 登陆成功，uniqueId：{},socketId:{}",
-                            netSocket.remoteAddress().host(), deviceId, netSocketId);
-                    return deviceId;
-                }).orElse(null);
+                if ((eqId = getEquipmentId(data)) != null) {
+                    //TODO 配置中心获取上行对列名
+                    //TODO 一定要保证与缓存的注册表数据最终一致
+                    String serialNumber = String.valueOf(IdGenerator.buildDistributedId());
+                    TransportEventEntry event = new TransportEventEntry();
+                    event.setEqId(eqId);
+                    event.setEqType(EquipmentTypeEnum.WRISTSTRAP.getType());
+                    event.setInstanceId(config.getArtifactId());
+                    event.setSerialNumber(serialNumber);
+                    event.setType(EventTypeEnum.DEVICE_LOGIN.getType());
+                    //异步转同步,交给dispatcher端做登陆/注册校验
+                    TransportEventEntry eventResult = mqConnector.publishSync(
+                            gson.toJson(event),
+                            serialNumber);
+                    if (eventResult.getType() == EventTypeEnum.LOGIN_SUCCESS.getType()) {
+                        log.info("登陆成功，{}",eventResult);
+                        registry.put(eqId,new SocketWarpper(String.valueOf(netSocket.hashCode()),netSocket));
+                    } else if (eventResult.getType() == EventTypeEnum.LOGIN_FAIL.getType()) {
+                        throw new RuntimeException("登陆失败！: " + eventResult);
+                    } else {
+                        log.warn("消息类型有误！，{}", eventResult);
+                    }
+                }
             } else {
-                return registry.entrySet().
+                eqId = registry.entrySet().
                         stream().
                         filter(entry ->
                                 entry.getValue().getNetSocketId().equals(String.valueOf(netSocket.hashCode()))).
@@ -51,19 +83,22 @@ public class WriststrapDevice extends AbsSocketManager {
                             return new ConnectRefuseException();
                         });
             }
-        }).orElse(StringUtils.EMPTY);
-
+        }
+        return eqId == null ? StringUtils.EMPTY : eqId;
     }
 
+
     @Override
-    public void deviceUnRegister(NetSocket netSocket) {
+    public void deviceLogout(NetSocket netSocket) {
         String netSocketID = String.valueOf(netSocket.hashCode());
         registry.entrySet().removeIf(entry -> entry.getValue().getNetSocketId().equals(netSocketID));
     }
 
     @Override
-    public Optional<NetSocket> getDeviceNetSocket(String uniqueId) {
-        return Optional.ofNullable(uniqueId).map(id -> registry.get(id)).
+    public Optional<NetSocket> getDeviceNetSocket(String equipmentId) {
+        return Optional.ofNullable(equipmentId).map(id -> registry.get(id)).
                 map(SocketWarpper::getNetSocket);
     }
+
+
 }

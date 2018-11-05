@@ -1,4 +1,4 @@
-package com.hc.equipment.bootstrap;
+package com.hc.equipment.dispatch;
 
 import com.hc.equipment.device.DeviceSocketManager;
 import com.hc.equipment.mvc.DispatcherProxy;
@@ -15,8 +15,11 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * tcp下行请求处理
+ */
 @Slf4j
-public class TCPVerticle extends AbstractVerticle {
+public class TCPDownStream extends AbstractVerticle {
     private DispatcherProxy dispatcherProxy = SpringContextUtil.getBean(DispatcherProxy.class);
     private DeviceSocketManager deviceSocketManager = SpringContextUtil.getBean(DeviceSocketManager.class);
     private Config config = SpringContextUtil.getBean(Config.class);
@@ -59,29 +62,28 @@ public class TCPVerticle extends AbstractVerticle {
                 log.info("{}接收数据:{} ", netSocket.remoteAddress().host(), buffer.getString(0, buffer.length()));
                 try {
                     PacketHandlerFactory.buildPacketHandler(netSocket).packageHandler(buffer).forEach(command -> {
-                        String deviceUniqueId;
-                        deviceUniqueId = deviceSocketManager.deviceRegister(netSocket, command);
-                        Optional.ofNullable(dispatcherProxy.routingTCP(command, deviceUniqueId)).
+                        String equipmentId;
+                        equipmentId = deviceSocketManager.deviceLogin(netSocket, command);
+                        Optional.ofNullable(dispatcherProxy.routingTCP(command, equipmentId)).
                                 ifPresent(result -> deviceSocketManager.writeString(netSocket, result));
                     });
                 } catch (Exception e) {
                     log.error("TCP数据处理异常{}", e);
-                    clearOnException(netSocket,false);
+                    clearOnException(netSocket, false);
                 }
             }).exceptionHandler(throwable -> {
                 log.info("TCP连接异常，关闭连接：{}，异常：{}", netSocket.remoteAddress().host(), throwable);
-                clearOnException(netSocket,true);
+                clearOnException(netSocket, true);
             });
         }).exceptionHandler(throwable -> log.error("TCP服务器异常:{}", throwable));
     }
 
     private void clearOnException(NetSocket netSocket, boolean disConnect) {
-        deviceSocketManager.deviceUnRegister(netSocket);
+        deviceSocketManager.deviceLogout(netSocket);
         PacketHandlerFactory.removePackageHandler(netSocket);
-        if(disConnect){
+        if (disConnect) {
             log.info("断开TCP连接：{}", netSocket.remoteAddress().host());
             netSocket.close();
         }
     }
-
 }

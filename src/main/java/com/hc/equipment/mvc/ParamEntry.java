@@ -9,11 +9,11 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Getter
 public class ParamEntry {
-    private String uniqueId;
+    private String equipmentId;
     private String instruction;
 
-    public ParamEntry(String uniqueId, String instruction) {
-        this.uniqueId = uniqueId;
+    public ParamEntry(String equipmentId, String instruction) {
+        this.equipmentId = equipmentId;
         this.instruction = instruction;
     }
 }

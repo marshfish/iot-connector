@@ -1,11 +1,11 @@
-package com.hc.equipment.http.dto;
+package com.hc.equipment.mvc;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target(value = ElementType.FIELD)
+@Target(value = ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface NotNull {
+public @interface TcpRouterManager {
 }

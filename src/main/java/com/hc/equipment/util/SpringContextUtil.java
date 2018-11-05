@@ -18,4 +18,8 @@ public class SpringContextUtil implements ApplicationContextAware {
         return context.getBean(clazz);
     }
 
+    public static ApplicationContext getContext() {
+        return context;
+    }
+
 }

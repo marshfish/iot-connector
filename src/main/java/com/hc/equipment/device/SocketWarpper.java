@@ -9,9 +9,14 @@ import lombok.extern.slf4j.Slf4j;
 public class SocketWarpper {
     private String netSocketId;
     private NetSocket netSocket;
+    private Integer profile;
 
     public SocketWarpper(String netSocketId, NetSocket netSocket) {
         this.netSocketId = netSocketId;
         this.netSocket = netSocket;
+    }
+
+    public void setProfile(Integer profile) {
+        this.profile = profile;
     }
 }
