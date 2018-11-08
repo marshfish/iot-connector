@@ -2,7 +2,8 @@ package com.hc.equipment.dispatch;
 
 import com.hc.equipment.connector.TransportEventEntry;
 import com.hc.equipment.dispatch.event.EventHandlerPipeline;
-import com.hc.equipment.util.Config;
+import com.hc.equipment.dispatch.event.PipelineContainer;
+import com.hc.equipment.configuration.CommonConfig;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
@@ -13,6 +14,8 @@ import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 @Slf4j
@@ -22,14 +25,26 @@ public class MqEventDownStream implements InitializingBean {
     @Resource
     private CallbackManager callbackManager;
     @Resource
-    private Config config;
+    private CommonConfig commonConfig;
+    @Resource
+    private PipelineContainer pipelineContainer;
 
     private static Queue<TransportEventEntry> eventQueue;
     private static ExecutorService eventExecutor;
 
     private void initQueue() {
-        eventQueue = new LinkedBlockingQueue<>(config.getEventBusQueueSize());
-        eventExecutor = Executors.newFixedThreadPool(config.getEventBusThreadNumber());
+        eventQueue = new LinkedBlockingQueue<>(commonConfig.getEventBusQueueSize());
+        eventExecutor = Executors.newFixedThreadPool(commonConfig.getEventBusThreadNumber(), new ThreadFactory() {
+            private AtomicInteger count = new AtomicInteger(1);
+
+            @Override
+            public Thread newThread(Runnable r) {
+                Thread thread = new Thread();
+                thread.setDaemon(true);
+                thread.setName("event-poller-" + count.getAndIncrement());
+                return thread;
+            }
+        });
     }
 
     public void handlerMessage(TransportEventEntry transportEventEntry) {
@@ -46,14 +61,16 @@ public class MqEventDownStream implements InitializingBean {
                 if (event != null) {
                     try {
                         Integer eventType = event.getType();
+                        String serialNumber = event.getSerialNumber();
                         Consumer<TransportEventEntry> consumer;
                         //暂时没有特殊需求，使用默认pipeline即可，如果需要动态添加/删除，须在TCPDownStream配置
-                        EventHandlerPipeline pipeline = EventHandlerPipeline.getBySerialId(event.getSerialNumber());
+                        EventHandlerPipeline pipeline = pipelineContainer.getPipelineBySerialId(serialNumber);
                         if (pipeline == null) {
-                            pipeline = EventHandlerPipeline.getDefaultPipeline();
+                            pipeline = pipelineContainer.getDefaultPipeline();
                         }
                         if ((consumer = pipeline.adaptEventHandler(eventType)) != null) {
                             consumer.accept(event);
+                            pipelineContainer.removePipeline(serialNumber);
                         } else {
                             log.warn("未经注册的事件，{}", event);
                         }

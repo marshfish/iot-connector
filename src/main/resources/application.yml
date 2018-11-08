@@ -3,17 +3,27 @@ logging:
       com.hc: debug
   file: ./log/vertx.log
   root: DEBUG
-hc:
+connector:
   commons:
-    artifactId: wriststrap  
+    artifactId: wriststrap
     instanceId: wriststrap_1 #集群节点名，部署时注意要唯一
     host: 0.0.0.0
     tcpPort: 8765
-    callbackDomain: https://hctest.hushijie.com.cn
     maxBusBlockingTime: 1500
     eventBusThreadNumber: 100
     eventBusQueueSize: 1
-
+    timeout: 100000
+    timeDisconnect: 180000
+    equipmentType: 1
+  rabbitmq:
+    mqHost: 39.105.125.26
+    mqPort: 5672
+    mqUserName: admin
+    mqPwd: 12345678
+    virtualHost: /
+    upQueueName: upstream
+    downQueueName: downstream
+    exchangeName: device_communication
 #配置中心配置项
-#callbackDomain
+#devCallbackDomain
 #instanceNumber

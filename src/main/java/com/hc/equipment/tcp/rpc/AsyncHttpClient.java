@@ -1,7 +1,7 @@
 package com.hc.equipment.tcp.rpc;
 
 import com.google.gson.Gson;
-import com.hc.equipment.util.Config;
+import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.util.SpringContextUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpResponse;
@@ -22,7 +22,7 @@ import java.util.Map;
 
 @Slf4j
 public class AsyncHttpClient {
-    private static Config config = SpringContextUtil.getBean(Config.class);
+    private static CommonConfig commonConfig = SpringContextUtil.getBean(CommonConfig.class);
     private static CloseableHttpAsyncClient client;
 
     static {
@@ -67,7 +67,7 @@ public class AsyncHttpClient {
     }
 
     public static void sendPost(String uri, String body, FutureCallback<HttpResponse> future) {
-        final String url = config.getCallbackDomain() + uri;
+        final String url = commonConfig.getDevCallbackDomain() + uri;
         HttpPost httpPost = new HttpPost(url);
         String param = new Gson().toJson(body);
         StringEntity entity;
@@ -82,5 +82,6 @@ public class AsyncHttpClient {
         httpPost.setEntity(entity);
         client.execute(httpPost, future);
     }
+
 
 }

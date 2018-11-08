@@ -22,7 +22,7 @@ import java.util.function.Consumer;
  *      RabbitMq发送消息 -> eventBus转发消息-> 相应节点的MqEventDownStream事件循环获取到事件，分配给EventHandler ->
  *      SyncEventHandler调用handler方法 -> CallbackManager获取同步回调的mockCallback -> 将响应结果set到Warpper里，并唤醒主线程 ->
  *      返回Warpper中的响应结果
- * rabbitmq推送相关详见{@link MqConnector#publishSync(String, String)}
+ * rabbitmq推送相关详见{@link MqConnector#producerSync(String, String)}
  */
 public interface EventHandler extends Consumer<TransportEventEntry>{
     /**

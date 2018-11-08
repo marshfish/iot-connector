@@ -20,15 +20,27 @@ public class TransportEventEntry {
      */
     private Integer eqType;
     /**
-     * 节点ID
+     * connector节点项目名
      */
-    private String instanceId;
+    private String nodeArtifactId;
+    /**
+     * disptcher节点ID
+     */
+    private String dispatcherId;
+    /**
+     * connector节点ID
+     */
+    private String connectorId;
     /**
      * 指令流水号
      */
     private String serialNumber;
     /**
+     * 设备协议
+     */
+    private Integer protocol;
+    /**
      * 事件消息
      */
-    private String msg;
+    private Object msg;
 }

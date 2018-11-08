@@ -1,5 +1,7 @@
 package com.hc.equipment.mvc;
 
+import com.hc.equipment.Bootstrap;
+import com.hc.equipment.LoadOrder;
 import com.hc.equipment.device.DeviceSocketManager;
 import com.hc.equipment.util.ReflectionUtil;
 import com.hc.equipment.util.SpringContextUtil;
@@ -9,17 +11,21 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
-public class DispatcherProxy {
+@LoadOrder(value = 3)
+public class DispatcherProxy implements Bootstrap {
     @Resource
     private DeviceSocketManager deviceSocketManager;
-    private static final ConcurrentHashMap<String, MappingEntry> TCP_INSTRUCTION_MAPPING = new ConcurrentHashMap<>();
+    private static final Map<String, MappingEntry> TCP_INSTRUCTION_MAPPING = new HashMap<>();
 
     @SneakyThrows
+    @Override
     public void init() {
         SpringContextUtil.getContext().getBeansWithAnnotation(TcpRouterManager.class).forEach((beanName, object) -> {
             Class<?> cls = object.getClass();

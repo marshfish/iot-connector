@@ -7,7 +7,7 @@ import com.hc.equipment.exception.ConnectRefuseException;
 import com.hc.equipment.tcp.promise.WriststrapProtocol;
 import com.hc.equipment.type.EquipmentTypeEnum;
 import com.hc.equipment.type.EventTypeEnum;
-import com.hc.equipment.util.Config;
+import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.util.IdGenerator;
 import io.vertx.core.net.NetSocket;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +15,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -29,7 +30,7 @@ public class WriststrapDevice extends AbsSocketManager {
     @Resource
     private MqConnector mqConnector;
     @Resource
-    private Config config;
+    private CommonConfig commonConfig;
 
     @Override
     public String getEquipmentId(String data) {
@@ -55,16 +56,21 @@ public class WriststrapDevice extends AbsSocketManager {
                     TransportEventEntry event = new TransportEventEntry();
                     event.setEqId(eqId);
                     event.setEqType(EquipmentTypeEnum.WRISTSTRAP.getType());
-                    event.setInstanceId(config.getArtifactId());
+                    event.setConnectorId(commonConfig.getArtifactId());
                     event.setSerialNumber(serialNumber);
                     event.setType(EventTypeEnum.DEVICE_LOGIN.getType());
+                    event.setDispatcherId("1");
+
                     //异步转同步,交给dispatcher端做登陆/注册校验
-                    TransportEventEntry eventResult = mqConnector.publishSync(
+                    HashMap<String, Object> headers = new HashMap<>();
+                    headers.put("dispatcherId", "1");
+                    TransportEventEntry eventResult = mqConnector.producerSync(
+                            serialNumber,
                             gson.toJson(event),
-                            serialNumber);
+                            headers);
                     if (eventResult.getType() == EventTypeEnum.LOGIN_SUCCESS.getType()) {
-                        log.info("登陆成功，{}",eventResult);
-                        registry.put(eqId,new SocketWarpper(String.valueOf(netSocket.hashCode()),netSocket));
+                        log.info("登陆成功，{}", eventResult);
+                        registry.put(eqId, new SocketWarpper(String.valueOf(netSocket.hashCode()), netSocket));
                     } else if (eventResult.getType() == EventTypeEnum.LOGIN_FAIL.getType()) {
                         throw new RuntimeException("登陆失败！: " + eventResult);
                     } else {

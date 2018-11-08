@@ -23,7 +23,7 @@ public class InstructionHandler extends AsyncEventHandler {
         validEmpty("设备ID",event.getEqId());
         validEmpty("指令",event.getMsg());
         String eqId = event.getEqId();
-        String msg = event.getMsg();
+        String msg = (String) event.getMsg();
         deviceSocketManager.getDeviceNetSocket(eqId).
                 ifPresent(netSocket -> deviceSocketManager.writeString(netSocket, msg));
     }

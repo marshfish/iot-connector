@@ -3,7 +3,7 @@ package com.hc.equipment.dispatch;
 import com.hc.equipment.device.DeviceSocketManager;
 import com.hc.equipment.mvc.DispatcherProxy;
 import com.hc.equipment.tcp.handler.PacketHandlerFactory;
-import com.hc.equipment.util.Config;
+import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.util.SpringContextUtil;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.net.NetServer;
@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class TCPDownStream extends AbstractVerticle {
     private DispatcherProxy dispatcherProxy = SpringContextUtil.getBean(DispatcherProxy.class);
     private DeviceSocketManager deviceSocketManager = SpringContextUtil.getBean(DeviceSocketManager.class);
-    private Config config = SpringContextUtil.getBean(Config.class);
+    private CommonConfig commonConfig = SpringContextUtil.getBean(CommonConfig.class);
     private static AtomicInteger instance = new AtomicInteger(1);
     private NetServer netServer;
 
@@ -35,11 +35,11 @@ public class TCPDownStream extends AbstractVerticle {
     }
 
     private void loadBootstrapListener() {
-        netServer.listen(config.getTcpPort(), config.getHost(), netServerAsyncResult -> {
+        netServer.listen(commonConfig.getTcpPort(), commonConfig.getHost(), netServerAsyncResult -> {
             if (netServerAsyncResult.succeeded()) {
-                log.info("vert.x TCP实例{}启动成功,端口：{}", instance.getAndIncrement(), config.getTcpPort());
+                log.info("vert.x TCP实例{}启动成功,端口：{}", instance.getAndIncrement(), commonConfig.getTcpPort());
             } else {
-                log.info("vert.x TCP实例{}启动后失败,端口：{}", instance.getAndIncrement(), config.getTcpPort());
+                log.info("vert.x TCP实例{}启动后失败,端口：{}", instance.getAndIncrement(), commonConfig.getTcpPort());
             }
         });
     }

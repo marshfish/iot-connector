@@ -2,17 +2,8 @@ package com.hc.equipment.dispatch.event;
 
 
 import com.hc.equipment.connector.TransportEventEntry;
-import com.hc.equipment.dispatch.event.handler.ConfigDiscover;
-import com.hc.equipment.dispatch.event.handler.InstructionHandler;
-import com.hc.equipment.dispatch.event.handler.LoginFail;
-import com.hc.equipment.dispatch.event.handler.LoginSuccess;
-import com.hc.equipment.dispatch.event.handler.Pong;
-import com.hc.equipment.dispatch.event.handler.RegisterFail;
-import com.hc.equipment.dispatch.event.handler.RegisterSuccess;
 import com.hc.equipment.type.EventTypeEnum;
-import com.hc.equipment.util.SpringContextUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -25,42 +16,9 @@ import java.util.function.Consumer;
  */
 @Slf4j
 @Component
-public class EventHandlerPipeline implements InitializingBean, Cloneable {
-    //一个请求对应一个pipeline
-    private static Map<String, EventHandlerPipeline> pipelineMap = new LRUHashMap<>();
+public class EventHandlerPipeline implements Cloneable {
     //pipeline中的消费者事件字典
     private Map<Integer, Consumer<TransportEventEntry>> eventHandler = new HashMap<>();
-    //单例默认pipeline
-    private static final EventHandlerPipeline defaultPipeline = new EventHandlerPipeline();
-
-    /**
-     * 根据流水号获取pipeline
-     *
-     * @param seriaId 流水号
-     * @return pipeline
-     */
-    public static EventHandlerPipeline getBySerialId(String seriaId) {
-        return pipelineMap.get(seriaId);
-    }
-
-    /**
-     * 为新的请求添加pipeline
-     *
-     * @param seriaId  流水号
-     * @param pipeline pipeline
-     */
-    public static void addPipeline(String seriaId, EventHandlerPipeline pipeline) {
-        pipelineMap.put(seriaId, pipeline);
-    }
-
-    /**
-     * 获取默认的pipeline
-     *
-     * @return pipeline
-     */
-    public static EventHandlerPipeline getDefaultPipeline() {
-        return defaultPipeline;
-    }
 
     /**
      * 添加事件处理器
@@ -104,14 +62,4 @@ public class EventHandlerPipeline implements InitializingBean, Cloneable {
         return pipeline;
     }
 
-    @Override
-    public void afterPropertiesSet() throws Exception {
-        defaultPipeline.addEventHandler(SpringContextUtil.getBean(ConfigDiscover.class))
-                .addEventHandler(SpringContextUtil.getBean(InstructionHandler.class))
-                .addEventHandler(SpringContextUtil.getBean(LoginFail.class))
-                .addEventHandler(SpringContextUtil.getBean(LoginSuccess.class))
-                .addEventHandler(SpringContextUtil.getBean(RegisterFail.class))
-                .addEventHandler(SpringContextUtil.getBean(RegisterSuccess.class))
-                .addEventHandler(SpringContextUtil.getBean(Pong.class));
-    }
 }

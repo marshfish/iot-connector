@@ -1,16 +1,18 @@
-package com.hc.equipment.util;
+package com.hc.equipment.configuration;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
-@ConfigurationProperties(prefix = "hc.commons")
+@ConfigurationProperties(prefix = "connector.commons")
 @Data
-public class Config {
+public class CommonConfig {
     /**
      * 项目ID
      */
@@ -18,12 +20,7 @@ public class Config {
     /**
      * 实例ID
      */
-    private String instanceId;
-    /**
-     * 实例编号（由dispatcher端生成）
-     * 仅用于生成分布式ID
-     */
-    private Integer instanceNumber;
+    private String connectorId;
     /**
      * 主机
      */
@@ -35,7 +32,11 @@ public class Config {
     /**
      * 回调域名
      */
-    private String callbackDomain;
+    private String devCallbackDomain;
+    /**
+     * 协议类型
+     */
+    private Integer protocol;
     /**
      * 同步调用主线程最大阻塞时间
      */
@@ -49,21 +50,27 @@ public class Config {
      */
     private int eventBusQueueSize;
     /**
-     * rabbitMq相关配置
-     */
-    private String mqHost;
-    private int mqPort;
-    private String mqUserName;
-    private String mqPwd;
-    private String virtualHost;
-    private String upQueueName;
-    private String exchangeName;
-    /**
-     * 心跳超时，网络延时
+     * 心跳超时，网络延时事件
      */
     private long timeout;
     /**
-     * 心跳超时，断开连接
+     * 心跳超时，断开连接事件
      */
     private long timeDisconnect;
+    /**
+     * 设备类型
+     */
+    private Integer equipmentType;
+    /**
+     * 回调域名缓存
+     */
+    private Map<Integer, String> domainMap = new HashMap<>();
+
+    public String getDomain(Integer domainType) {
+        return domainMap.get(domainType);
+    }
+
+    public void addDomain(Integer domainType, String domain) {
+        domainMap.put(domainType, domain);
+    }
 }

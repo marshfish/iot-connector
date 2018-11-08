@@ -1,7 +1,6 @@
 package com.hc.equipment.tcp;
 
-import com.hc.equipment.EquipmentTcpApplication;
-import com.hc.equipment.dispatch.EventBusListener;
+import com.hc.equipment.connector.MqConnector;
 import com.hc.equipment.mvc.TcpRouter;
 import com.hc.equipment.mvc.TcpRouterManager;
 import com.hc.equipment.mvc.ParamEntry;
@@ -10,6 +9,7 @@ import com.hc.equipment.tcp.rpc.AsyncHttpClient;
 import com.hc.equipment.tcp.rpc.WriststrapRestUri;
 import com.hc.equipment.util.CommonUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import java.text.SimpleDateFormat;
@@ -22,9 +22,10 @@ import java.util.Optional;
  */
 @Slf4j
 @TcpRouterManager
+@Component
 public class WriststrapTCPController extends CommonUtil {
     @Resource
-    private EventBusListener listener;
+    private MqConnector mqConnector;
     /**
      * 登陆包
      */
@@ -90,9 +91,10 @@ public class WriststrapTCPController extends CommonUtil {
     @TcpRouter("APXL")
     public void heartRateResponse(ParamEntry paramEntry) {
         log.info("测量心率响应：{}",paramEntry.getInstruction());
+
         Optional.ofNullable(paramEntry.getInstruction()).
                 map(instruction -> instruction.substring(7, instruction.length() - 1)).
-                ifPresent(uuid -> listener.publish(uuid, Boolean.TRUE));
+                ifPresent(uuid -> mqConnector.producer(""));
     }
 
 

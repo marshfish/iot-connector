@@ -1,13 +1,14 @@
 package com.hc.equipment.util;
 
 
+import com.hc.equipment.configuration.CommonConfig;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class IdGenerator {
 
     private static AtomicInteger index = new AtomicInteger(1);
-    private static SnowFlake snowFlake = new SnowFlake(0, SpringContextUtil.getBean(Config.class).getInstanceNumber());
+
 
     public static int buildCASId() {
         for (; ; ) {
@@ -20,10 +21,11 @@ public class IdGenerator {
     }
 
     public static long buildDistributedId() {
-        return snowFlake.nextId();
+        return SnowFlake.snowFlake.nextId();
     }
 
     private static class SnowFlake {
+        private static SnowFlake snowFlake = new SnowFlake(0, 1);
         /**
          * 开始时间截 (2015-01-01)
          */
