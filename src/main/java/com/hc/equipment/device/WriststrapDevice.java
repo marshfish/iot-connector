@@ -1,13 +1,13 @@
 package com.hc.equipment.device;
 
-import com.google.gson.Gson;
-import com.hc.equipment.connector.MqConnector;
-import com.hc.equipment.connector.TransportEventEntry;
+import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.exception.ConnectRefuseException;
+import com.hc.equipment.rpc.MqConnector;
+import com.hc.equipment.rpc.TransportEventEntry;
+import com.hc.equipment.rpc.serialization.Trans;
 import com.hc.equipment.tcp.promise.WriststrapProtocol;
 import com.hc.equipment.type.EquipmentTypeEnum;
 import com.hc.equipment.type.EventTypeEnum;
-import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.util.IdGenerator;
 import io.vertx.core.net.NetSocket;
 import lombok.extern.slf4j.Slf4j;
@@ -25,8 +25,7 @@ import java.util.Optional;
 @Component
 @Slf4j
 public class WriststrapDevice extends AbsSocketManager {
-    @Resource
-    private Gson gson;
+
     @Resource
     private MqConnector mqConnector;
     @Resource
@@ -53,58 +52,33 @@ public class WriststrapDevice extends AbsSocketManager {
                     //TODO 配置中心获取上行对列名
                     //TODO 一定要保证与缓存的注册表数据最终一致
                     String serialNumber = String.valueOf(IdGenerator.buildDistributedId());
-                    TransportEventEntry event = new TransportEventEntry();
-                    event.setEqId(eqId);
-                    event.setEqType(EquipmentTypeEnum.WRISTSTRAP.getType());
-                    event.setConnectorId(commonConfig.getArtifactId());
-                    event.setSerialNumber(serialNumber);
-                    event.setType(EventTypeEnum.DEVICE_LOGIN.getType());
-                    event.setDispatcherId("1");
+                    Trans.event_data.Builder event = Trans.event_data.newBuilder();
+                    byte[] bytes = event.setEqId(eqId).
+                            setEqType(EquipmentTypeEnum.WRISTSTRAP.getType()).
+                            setNodeArtifactId(commonConfig.getNodeArtifactId()).
+                            setSerialNumber(serialNumber).
+                            setType(EventTypeEnum.DEVICE_LOGIN.getType())
+                            .build().toByteArray();
 
                     //异步转同步,交给dispatcher端做登陆/注册校验
-                    HashMap<String, Object> headers = new HashMap<>();
-                    headers.put("dispatcherId", "1");
-                    TransportEventEntry eventResult = mqConnector.producerSync(
+                    TransportEventEntry eventResult = mqConnector.publishSync(
                             serialNumber,
-                            gson.toJson(event),
-                            headers);
+                            bytes);
                     if (eventResult.getType() == EventTypeEnum.LOGIN_SUCCESS.getType()) {
                         log.info("登陆成功，{}", eventResult);
-                        registry.put(eqId, new SocketWarpper(String.valueOf(netSocket.hashCode()), netSocket));
-                    } else if (eventResult.getType() == EventTypeEnum.LOGIN_FAIL.getType()) {
-                        throw new RuntimeException("登陆失败！: " + eventResult);
+                        netSocketRegistry.put(eqId, netSocket);
+                        netSocketIdMapping.put(netSocket.hashCode(), eqId);
                     } else {
-                        log.warn("消息类型有误！，{}", eventResult);
+                        throw new RuntimeException("登陆失败！: " + eventResult);
                     }
                 }
             } else {
-                eqId = registry.entrySet().
-                        stream().
-                        filter(entry ->
-                                entry.getValue().getNetSocketId().equals(String.valueOf(netSocket.hashCode()))).
-                        map(Map.Entry::getKey).
-                        findFirst().
-                        orElseThrow(() -> {
-                            log.info("设备未注册，拒绝手环：{} 登陆请求", netSocket.remoteAddress().host());
-                            return new ConnectRefuseException();
-                        });
+                eqId = Optional.ofNullable(netSocketIdMapping.get(netSocket.hashCode())).
+                        orElseThrow(() -> new RuntimeException("设备未经登陆！无权上传数据"));
+
             }
         }
         return eqId == null ? StringUtils.EMPTY : eqId;
     }
-
-
-    @Override
-    public void deviceLogout(NetSocket netSocket) {
-        String netSocketID = String.valueOf(netSocket.hashCode());
-        registry.entrySet().removeIf(entry -> entry.getValue().getNetSocketId().equals(netSocketID));
-    }
-
-    @Override
-    public Optional<NetSocket> getDeviceNetSocket(String equipmentId) {
-        return Optional.ofNullable(equipmentId).map(id -> registry.get(id)).
-                map(SocketWarpper::getNetSocket);
-    }
-
 
 }

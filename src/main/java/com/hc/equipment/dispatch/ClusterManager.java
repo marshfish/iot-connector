@@ -1,11 +1,14 @@
 package com.hc.equipment.dispatch;
 
 import com.google.gson.Gson;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.hazelcast.config.Config;
 import com.hazelcast.config.GroupConfig;
 import com.hc.equipment.Bootstrap;
 import com.hc.equipment.LoadOrder;
 import com.hc.equipment.configuration.CommonConfig;
-import com.hc.equipment.connector.TransportEventEntry;
+import com.hc.equipment.rpc.TransportEventEntry;
+import com.hc.equipment.rpc.serialization.Trans;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Handler;
@@ -16,11 +19,14 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.CaseInsensitiveHeaders;
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
@@ -34,20 +40,26 @@ public class ClusterManager implements Bootstrap {
     private Gson gson;
     @Resource
     private CommonConfig commonConfig;
+    @Resource
+    private NodeManager nodeManager;
+    private CountDownLatch latch = new CountDownLatch(1);
     private static EventBus eventBus;
 
     @Override
+    @SneakyThrows
     public void init() {
-        com.hazelcast.config.Config hazelcastConfig = new com.hazelcast.config.Config().
+        log.info("load cluster manager");
+        Config hazelcastConfig = new Config().
                 setGroupConfig(new GroupConfig().
-                        setName(beanCommonConfig.getArtifactId()).
-                        setPassword(beanCommonConfig.getArtifactId()));
+                        setName(beanCommonConfig.getNodeArtifactId()).
+                        setPassword(beanCommonConfig.getNodeArtifactId()));
 
         HazelcastClusterManager manager = new HazelcastClusterManager(hazelcastConfig);
         VertxOptions vertxOptions = new VertxOptions().
                 setPreferNativeTransport(true).
                 setClusterManager(manager);
         Vertx.clusteredVertx(vertxOptions, this::bootstrapHandler);
+        latch.await(10000, TimeUnit.MILLISECONDS);
     }
 
     private void bootstrapHandler(AsyncResult<Vertx> event) {
@@ -57,6 +69,7 @@ public class ClusterManager implements Bootstrap {
                     setInstances(Runtime.getRuntime().availableProcessors()));
             eventBus = vertx.eventBus();
             listen();
+            latch.countDown();
         } else {
             log.error("集群启动失败，{}", event.cause());
         }
@@ -68,11 +81,17 @@ public class ClusterManager implements Bootstrap {
     private void listen() {
         log.info("load and listen eventBus ");
         //TODO
-        ClusterManager.getEventBus().consumer(commonConfig.getArtifactId(),
-                (Handler<Message<String>>) event -> {
-                    String eventJson = event.body();
-                    TransportEventEntry eventEntry = gson.fromJson(eventJson, TransportEventEntry.class);
-                    eventDownStream.handlerMessage(eventEntry);
+        ClusterManager.getEventBus().consumer(commonConfig.getNodeArtifactId(),
+                (Handler<Message<byte[]>>) event -> {
+                    byte[] bytes = event.body();
+                    try {
+                        Trans.event_data eventData = Trans.event_data.parseFrom(bytes);
+                        TransportEventEntry eventEntry = TransportEventEntry.parseTrans2This(eventData);
+                        //TODO 消息过期  消息重发
+                        eventDownStream.handlerMessage(eventEntry);
+                    } catch (InvalidProtocolBufferException e) {
+                        e.printStackTrace();
+                    }
                 });
     }
 

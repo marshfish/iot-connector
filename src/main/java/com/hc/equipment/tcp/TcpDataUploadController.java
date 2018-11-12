@@ -1,12 +1,13 @@
 package com.hc.equipment.tcp;
 
-import com.hc.equipment.connector.MqConnector;
+import com.google.gson.Gson;
+import com.hc.equipment.dispatch.event.DataUploadHandler;
+import com.hc.equipment.mvc.ParamEntry;
 import com.hc.equipment.mvc.TcpRouter;
 import com.hc.equipment.mvc.TcpRouterManager;
-import com.hc.equipment.mvc.ParamEntry;
+import com.hc.equipment.rpc.MqConnector;
 import com.hc.equipment.tcp.promise.WriststrapProtocol;
-import com.hc.equipment.tcp.rpc.AsyncHttpClient;
-import com.hc.equipment.tcp.rpc.WriststrapRestUri;
+import com.hc.equipment.tcp.promise.WriststrapRestUri;
 import com.hc.equipment.util.CommonUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -15,17 +16,20 @@ import javax.annotation.Resource;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 /**
- * tcp -> http
+ * tcp数据上传controller
+ * 接受设备日常数据上传、设备执行指令的响应
  */
 @Slf4j
 @TcpRouterManager
 @Component
-public class WriststrapTCPController extends CommonUtil {
+public class TcpDataUploadController extends CommonUtil {
     @Resource
-    private MqConnector mqConnector;
+    private DataUploadHandler dataUploadHandler;
+    @Resource
+    private Gson gson;
+
     /**
      * 登陆包
      */
@@ -53,7 +57,9 @@ public class WriststrapTCPController extends CommonUtil {
         map.put("battery", electricity);
         map.put("imei", paramEntry.getEquipmentId());
         map.put("pedometer", "250666");
-        AsyncHttpClient.sendPost(WriststrapRestUri.BEAT_HEART.path, map);
+        dataUploadHandler.uploadData(paramEntry.getEquipmentId(),
+                WriststrapRestUri.BEAT_HEART.path,
+                gson.toJson(map));
         return WriststrapProtocol.HEART_BEAT;
     }
 
@@ -81,7 +87,9 @@ public class WriststrapTCPController extends CommonUtil {
         param.put("sdp", split[2]);
         param.put("dbp", split[3].substring(0, split[3].length() - 1));
         param.put("oxygen", "100");
-        AsyncHttpClient.sendPost(WriststrapRestUri.HEALTH.path, param);
+        dataUploadHandler.uploadData(paramEntry.getEquipmentId(),
+                WriststrapRestUri.HEALTH.path,
+                gson.toJson(param));
         return WriststrapProtocol.BLOOD;
     }
 
@@ -90,11 +98,10 @@ public class WriststrapTCPController extends CommonUtil {
      */
     @TcpRouter("APXL")
     public void heartRateResponse(ParamEntry paramEntry) {
-        log.info("测量心率响应：{}",paramEntry.getInstruction());
-
-        Optional.ofNullable(paramEntry.getInstruction()).
-                map(instruction -> instruction.substring(7, instruction.length() - 1)).
-                ifPresent(uuid -> mqConnector.producer(""));
+        String instruction = paramEntry.getInstruction();
+        log.info("测量心率响应：{}", instruction);
+        String seriaNumber = instruction.substring(7, instruction.length() - 1);
+        dataUploadHandler.uploadCallback(seriaNumber, paramEntry.getEquipmentId(), instruction);
     }
 
 

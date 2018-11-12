@@ -2,16 +2,15 @@ logging:
   level:
       com.hc: debug
   file: ./log/vertx.log
-  root: DEBUG
 connector:
   commons:
-    artifactId: wriststrap
-    instanceId: wriststrap_1 #集群节点名，部署时注意要唯一
+    nodeArtifactId: wriststrap_1
+    protocol: 0
     host: 0.0.0.0
     tcpPort: 8765
     maxBusBlockingTime: 1500
-    eventBusThreadNumber: 100
-    eventBusQueueSize: 1
+    eventBusThreadNumber: 1
+    eventBusQueueSize: 100
     timeout: 100000
     timeDisconnect: 180000
     equipmentType: 1
@@ -22,8 +21,5 @@ connector:
     mqPwd: 12345678
     virtualHost: /
     upQueueName: upstream
-    downQueueName: downstream
+    downQueueName: wriststrap
     exchangeName: device_communication
-#配置中心配置项
-#devCallbackDomain
-#instanceNumber

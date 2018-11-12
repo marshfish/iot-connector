@@ -1,7 +1,7 @@
 package com.hc.equipment.dispatch.event;
 
 
-import com.hc.equipment.connector.TransportEventEntry;
+import com.hc.equipment.rpc.TransportEventEntry;
 import com.hc.equipment.type.EventTypeEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

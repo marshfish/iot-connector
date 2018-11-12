@@ -1,6 +1,6 @@
 package com.hc.equipment.dispatch;
 
-import com.hc.equipment.connector.TransportEventEntry;
+import com.hc.equipment.rpc.TransportEventEntry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 
@@ -14,6 +14,7 @@ import java.util.function.Consumer;
 @Slf4j
 @Controller
 public class CallbackManager {
+    //同步回调
     private static Map<String, Consumer<TransportEventEntry>> callbackInvoke = new ConcurrentHashMap<>(100);
 
     /**

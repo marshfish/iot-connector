@@ -27,6 +27,7 @@ public class DispatcherProxy implements Bootstrap {
     @SneakyThrows
     @Override
     public void init() {
+        log.info("load tcp mvc dispatcher");
         SpringContextUtil.getContext().getBeansWithAnnotation(TcpRouterManager.class).forEach((beanName, object) -> {
             Class<?> cls = object.getClass();
             Method[] methods = cls.getMethods();

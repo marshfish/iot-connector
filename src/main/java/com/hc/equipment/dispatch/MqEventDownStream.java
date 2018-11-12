@@ -1,12 +1,13 @@
 package com.hc.equipment.dispatch;
 
-import com.hc.equipment.connector.TransportEventEntry;
+import com.hc.equipment.Bootstrap;
+import com.hc.equipment.LoadOrder;
+import com.hc.equipment.configuration.CommonConfig;
+import com.hc.equipment.rpc.TransportEventEntry;
 import com.hc.equipment.dispatch.event.EventHandlerPipeline;
 import com.hc.equipment.dispatch.event.PipelineContainer;
-import com.hc.equipment.configuration.CommonConfig;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -21,7 +22,8 @@ import java.util.function.Consumer;
 @Slf4j
 @Data
 @Component
-public class MqEventDownStream implements InitializingBean {
+@LoadOrder(value = 2)
+public class MqEventDownStream implements Bootstrap {
     @Resource
     private CallbackManager callbackManager;
     @Resource
@@ -39,7 +41,7 @@ public class MqEventDownStream implements InitializingBean {
 
             @Override
             public Thread newThread(Runnable r) {
-                Thread thread = new Thread();
+                Thread thread = new Thread(r);
                 thread.setDaemon(true);
                 thread.setName("event-poller-" + count.getAndIncrement());
                 return thread;
@@ -55,7 +57,7 @@ public class MqEventDownStream implements InitializingBean {
 
 
     private void exeEventLoop() {
-        eventExecutor.submit((Runnable) () -> {
+        eventExecutor.execute(() -> {
             while (true) {
                 TransportEventEntry event = eventQueue.poll();
                 if (event != null) {
@@ -82,9 +84,9 @@ public class MqEventDownStream implements InitializingBean {
         });
     }
 
-
     @Override
-    public void afterPropertiesSet() throws Exception {
+    public void init() {
+        log.info("load event poller");
         initQueue();
         exeEventLoop();
     }

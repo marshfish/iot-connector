@@ -14,7 +14,7 @@ import java.util.Map;
 
 @Slf4j
 @Component
-@LoadOrder(value = 10)
+@LoadOrder(value = 6)
 public class PipelineContainer implements Bootstrap {
     //一个请求对应一个pipeline
     private static Map<String, EventHandlerPipeline> pipelineMap = new LRUHashMap<>();
@@ -46,6 +46,7 @@ public class PipelineContainer implements Bootstrap {
      */
     @Override
     public void init() {
+        log.info("load pipeline container");
         SpringContextUtil.getContext().getBeansOfType(EventHandler.class).
                 forEach((name, handler) -> defaultPipeline.addEventHandler(handler));
     }

@@ -1,6 +1,6 @@
 package com.hc.equipment.dispatch.event.handler;
 
-import com.hc.equipment.connector.TransportEventEntry;
+import com.hc.equipment.rpc.TransportEventEntry;
 import com.hc.equipment.dispatch.NodeManager;
 import com.hc.equipment.dispatch.event.AsyncEventHandler;
 import com.hc.equipment.type.EventTypeEnum;

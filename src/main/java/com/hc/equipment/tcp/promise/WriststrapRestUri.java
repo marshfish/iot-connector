@@ -1,4 +1,4 @@
-package com.hc.equipment.tcp.rpc;
+package com.hc.equipment.tcp.promise;
 
 public enum WriststrapRestUri {
     LOCATION("/location"),

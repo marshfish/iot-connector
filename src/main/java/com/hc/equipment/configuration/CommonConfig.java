@@ -16,7 +16,7 @@ public class CommonConfig {
     /**
      * 项目ID
      */
-    private String artifactId;
+    private String nodeArtifactId;
     /**
      * 实例ID
      */
@@ -61,16 +61,4 @@ public class CommonConfig {
      * 设备类型
      */
     private Integer equipmentType;
-    /**
-     * 回调域名缓存
-     */
-    private Map<Integer, String> domainMap = new HashMap<>();
-
-    public String getDomain(Integer domainType) {
-        return domainMap.get(domainType);
-    }
-
-    public void addDomain(Integer domainType, String domain) {
-        domainMap.put(domainType, domain);
-    }
 }
