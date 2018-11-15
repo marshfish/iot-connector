@@ -1,19 +1,25 @@
 package com.hc.equipment.dispatch.event;
 
 import com.google.gson.Gson;
+import com.hazelcast.internal.partition.PartitionStateVersionMismatchException;
 import com.hc.equipment.Bootstrap;
 import com.hc.equipment.LoadOrder;
+import com.hc.equipment.device.SocketWarpper;
 import com.hc.equipment.rpc.MqConnector;
 import com.hc.equipment.dispatch.event.handler.Pong;
+import com.hc.equipment.rpc.PublishEvent;
 import com.hc.equipment.rpc.serialization.Trans;
 import com.hc.equipment.type.EventTypeEnum;
 import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.util.IdGenerator;
+import io.netty.util.HashedWheelTimer;
+import io.netty.util.Timeout;
+import io.netty.util.TimerTask;
+import io.vertx.core.net.NetSocket;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
-import java.util.HashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -28,8 +34,6 @@ public class HeartBeatHandler implements Bootstrap {
     @Resource
     private MqConnector mqConnector;
     @Resource
-    private Gson gson;
-    @Resource
     private CommonConfig commonConfig;
     @Resource
     private Pong pong;
@@ -40,15 +44,29 @@ public class HeartBeatHandler implements Bootstrap {
         thread.setDaemon(true);
         return thread;
     });
+    HashedWheelTimer timer = new HashedWheelTimer();
 
     @Override
     public void init() {
         log.info("load heart beat timer");
+        initMqHeartbeat();
+    }
+
+    private void doEquipmentHeartbeat(SocketWarpper socketWarpper) {
+        Timeout timeout = timer.newTimeout(timeout1 -> socketWarpper.getNetSocket().close(),
+                5000, TimeUnit.MILLISECONDS);
+        socketWarpper.setTimer(timeout);
+
+    }
+
+    private void initMqHeartbeat() {
+        String id = String.valueOf(IdGenerator.buildDistributedId());
         Trans.event_data.Builder eventEntry = Trans.event_data.newBuilder();
         byte[] bytes = eventEntry.setNodeArtifactId(commonConfig.getNodeArtifactId()).
+                setSerialNumber(id).
                 setType(EventTypeEnum.PING.getType()).
                 setEqType(commonConfig.getEquipmentType()).
-                setEqQueueName(mqConnector.getRoutingKey()).build().toByteArray();
+                build().toByteArray();
         pingService.scheduleAtFixedRate(() -> {
             try {
                 log.info("节点心跳");
@@ -59,12 +77,13 @@ public class HeartBeatHandler implements Bootstrap {
                 } else if (timeout > commonConfig.getTimeDisconnect()) {
                     log.warn("心跳超时，已断开连接");
                 }
-                eventEntry.setSerialNumber(String.valueOf(IdGenerator.buildDistributedId()));
-                mqConnector.publish(bytes);
+                PublishEvent publishEvent = new PublishEvent(bytes, id);
+                mqConnector.publishAsync(publishEvent);
+
             } catch (Exception e) {
                 log.error("心跳发生异常！，{}", e);
             }
-        }, 30000, 15000, TimeUnit.MILLISECONDS);
+        }, 25000, 15000, TimeUnit.MILLISECONDS);
     }
 
 }

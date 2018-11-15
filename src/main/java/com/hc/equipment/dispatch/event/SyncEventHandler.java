@@ -1,7 +1,7 @@
 package com.hc.equipment.dispatch.event;
 
-import com.hc.equipment.rpc.TransportEventEntry;
 import com.hc.equipment.dispatch.CallbackManager;
+import com.hc.equipment.rpc.TransportEventEntry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
@@ -21,7 +21,6 @@ public abstract class SyncEventHandler implements EventHandler, BeanFactoryAware
 
     @Override
     public void accept(TransportEventEntry event) {
-        log.info("执行回调啊啊啊啊啊");
         callbackManager.execCallback(event);
     }
 }

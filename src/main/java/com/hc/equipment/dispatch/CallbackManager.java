@@ -15,7 +15,7 @@ import java.util.function.Consumer;
 @Controller
 public class CallbackManager {
     //同步回调
-    private static Map<String, Consumer<TransportEventEntry>> callbackInvoke = new ConcurrentHashMap<>(100);
+    private  Map<String, Consumer<TransportEventEntry>> callbackInvoke = new ConcurrentHashMap<>(100);
 
     /**
      * 注册回调

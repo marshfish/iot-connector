@@ -1,14 +1,11 @@
 package com.hc.equipment.util;
 
 
-import com.hc.equipment.configuration.CommonConfig;
-
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class IdGenerator {
-
     private static AtomicInteger index = new AtomicInteger(1);
-
 
     public static int buildCASId() {
         for (; ; ) {
@@ -25,7 +22,7 @@ public class IdGenerator {
     }
 
     private static class SnowFlake {
-        private static SnowFlake snowFlake = new SnowFlake(0, 1);
+        private static SnowFlake snowFlake = new SnowFlake();
         /**
          * 开始时间截 (2015-01-01)
          */
@@ -100,7 +97,7 @@ public class IdGenerator {
 
 
         public SnowFlake() {
-            this(0, 0);
+            this((long) (new Random().nextInt(30) + 1), (long) (new Random().nextInt(30) + 1));
         }
 
         /**

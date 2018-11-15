@@ -8,6 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadFactory;
 
 /**
  * 节点断线重连
@@ -18,10 +20,11 @@ public class DropConnection extends AsyncEventHandler {
     @Resource
     private NodeManager nodeManager;
 
-
     @Override
     public void accept(TransportEventEntry event) {
-        nodeManager.init();
+        //节点超时断开，尝试重连。注意要新开线程，否则可能死锁
+        log.warn("节点断开，尝试与dispatcher重新连接");
+        blockingOperation(() -> nodeManager.init());
     }
 
     @Override

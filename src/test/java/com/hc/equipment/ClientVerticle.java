@@ -1,7 +1,6 @@
 package com.hc.equipment;
 
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.net.NetClient;
 import io.vertx.core.net.NetSocket;
@@ -15,7 +14,7 @@ public class ClientVerticle extends AbstractVerticle {
         log.info("客户端启动");
         NetClient netClient = vertx.createNetClient();
 
-        netClient.connect(8765, "127.0.0.1",
+        netClient.connect(8765, "localhost",
                 result -> {
                     if (result.succeeded()) {
                         System.out.println("启动成功");
@@ -24,26 +23,26 @@ public class ClientVerticle extends AbstractVerticle {
                         return;
                     }
                     NetSocket socket = result.result();
-                    socket.write("IWAP003534");
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    socket.write("56789012345#");
+                    socket.write("IWAP00350182801330814#");
 //                    try {
 //                        Thread.sleep(1000);
 //                    } catch (InterruptedException e) {
 //                        e.printStackTrace();
 //                    }
-                    socket.write("IWAP03,0600");
+//                    socket.write("56789012345#");
 //                    try {
 //                        Thread.sleep(1000);
 //                    } catch (InterruptedException e) {
 //                        e.printStackTrace();
 //                    }
-                    socket.write("0908000102,5555,30#");
-                    socket.write("IWAPXL,080835#");
+//                    socket.write("IWAP03,0600");
+//                    try {
+//                        Thread.sleep(1000);
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                    }
+//                    socket.write("0908000102,5555,30#");
+//                    socket.write("IWAPXL,080835#");
                     socket.handler(buffer -> {
                                 String data = buffer.getString(0, buffer.length());
                                 log.info("接收数据:{} ", data);

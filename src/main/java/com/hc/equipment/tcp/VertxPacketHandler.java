@@ -1,4 +1,4 @@
-package com.hc.equipment.tcp.handler;
+package com.hc.equipment.tcp;
 
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.parsetools.RecordParser;

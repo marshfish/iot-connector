@@ -5,15 +5,16 @@ logging:
 connector:
   commons:
     nodeArtifactId: wriststrap_1
+    equipmentType: 0
     protocol: 0
     host: 0.0.0.0
     tcpPort: 8765
-    maxBusBlockingTime: 1500
-    eventBusThreadNumber: 1
+    defaultTimeout: 6000
+    maxBusBlockingTime: 50000
     eventBusQueueSize: 100
     timeout: 100000
     timeDisconnect: 180000
-    equipmentType: 1
+    tcpTimeout: 120000
   rabbitmq:
     mqHost: 39.105.125.26
     mqPort: 5672

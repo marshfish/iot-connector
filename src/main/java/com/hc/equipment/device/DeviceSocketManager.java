@@ -11,12 +11,7 @@ public interface DeviceSocketManager {
     /**
      * 根据指令获取请求上行协议号
      */
-    String getProtocolNumber(String data);
-
-    /**
-     * 根据指令获取设备唯一编号
-     */
-    String getEquipmentId(String data);
+    String setProtocolNumber(String data);
 
     /**
      * 设备登陆
@@ -36,10 +31,5 @@ public interface DeviceSocketManager {
      * 获取设备socket连接
      */
     Optional<NetSocket> getDeviceNetSocket(String equipmentId);
-
-    /**
-     * 写入字符串
-     */
-    void writeString(NetSocket netSocket, String data);
 
 }

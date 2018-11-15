@@ -2,8 +2,9 @@ package com.hc.equipment.dispatch;
 
 import com.hc.equipment.device.DeviceSocketManager;
 import com.hc.equipment.mvc.DispatcherProxy;
-import com.hc.equipment.tcp.handler.PacketHandlerFactory;
+import com.hc.equipment.tcp.PacketHandlerFactory;
 import com.hc.equipment.configuration.CommonConfig;
+import com.hc.equipment.util.CommonUtil;
 import com.hc.equipment.util.SpringContextUtil;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.net.NetServer;
@@ -61,15 +62,13 @@ public class TCPDownStream extends AbstractVerticle {
             netSocket.handler(buffer -> {
                 log.info("{}接收数据:{} ", netSocket.remoteAddress().host(), buffer.getString(0, buffer.length()));
                 try {
-                    PacketHandlerFactory.buildPacketHandler(netSocket).packageHandler(buffer).forEach(command -> {
-                        String equipmentId;
-                        equipmentId = deviceSocketManager.deviceLogin(netSocket, command);
-                        Optional.ofNullable(dispatcherProxy.routingTCP(command, equipmentId)).
-                                ifPresent(result -> deviceSocketManager.writeString(netSocket, result));
-                    });
+                    PacketHandlerFactory.buildPacketHandler(netSocket).packageHandler(buffer).forEach(command ->
+                            Optional.ofNullable(deviceSocketManager.deviceLogin(netSocket, command))
+                                    .map(id -> dispatcherProxy.routingTCP(command, id))
+                                    .ifPresent(result -> CommonUtil.writeString(netSocket, result)));
                 } catch (Exception e) {
                     log.error("TCP数据处理异常{}", e);
-                    clearOnException(netSocket, false);
+                    clearOnException(netSocket, true);
                 }
             }).exceptionHandler(throwable -> {
                 log.info("TCP连接异常，关闭连接：{}，异常：{}", netSocket.remoteAddress().host(), throwable);

@@ -1,4 +1,4 @@
-package com.hc.equipment.tcp.handler;
+package com.hc.equipment.tcp;
 
 import io.vertx.core.net.NetSocket;
 

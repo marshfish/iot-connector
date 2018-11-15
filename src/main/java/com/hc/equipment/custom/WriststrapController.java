@@ -1,13 +1,10 @@
-package com.hc.equipment.tcp;
+package com.hc.equipment.custom;
 
 import com.google.gson.Gson;
 import com.hc.equipment.dispatch.event.DataUploadHandler;
 import com.hc.equipment.mvc.ParamEntry;
 import com.hc.equipment.mvc.TcpRouter;
 import com.hc.equipment.mvc.TcpRouterManager;
-import com.hc.equipment.rpc.MqConnector;
-import com.hc.equipment.tcp.promise.WriststrapProtocol;
-import com.hc.equipment.tcp.promise.WriststrapRestUri;
 import com.hc.equipment.util.CommonUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -24,7 +21,7 @@ import java.util.Map;
 @Slf4j
 @TcpRouterManager
 @Component
-public class TcpDataUploadController extends CommonUtil {
+public class WriststrapController extends CommonUtil {
     @Resource
     private DataUploadHandler dataUploadHandler;
     @Resource
@@ -58,7 +55,7 @@ public class TcpDataUploadController extends CommonUtil {
         map.put("imei", paramEntry.getEquipmentId());
         map.put("pedometer", "250666");
         dataUploadHandler.uploadData(paramEntry.getEquipmentId(),
-                WriststrapRestUri.BEAT_HEART.path,
+                "/beatHeart",
                 gson.toJson(map));
         return WriststrapProtocol.HEART_BEAT;
     }
@@ -88,7 +85,7 @@ public class TcpDataUploadController extends CommonUtil {
         param.put("dbp", split[3].substring(0, split[3].length() - 1));
         param.put("oxygen", "100");
         dataUploadHandler.uploadData(paramEntry.getEquipmentId(),
-                WriststrapRestUri.HEALTH.path,
+                "/health",
                 gson.toJson(param));
         return WriststrapProtocol.BLOOD;
     }

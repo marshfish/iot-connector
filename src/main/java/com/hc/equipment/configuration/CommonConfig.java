@@ -18,10 +18,6 @@ public class CommonConfig {
      */
     private String nodeArtifactId;
     /**
-     * 实例ID
-     */
-    private String connectorId;
-    /**
      * 主机
      */
     private String host;
@@ -29,10 +25,6 @@ public class CommonConfig {
      * tcp端口号
      */
     private int tcpPort;
-    /**
-     * 回调域名
-     */
-    private String devCallbackDomain;
     /**
      * 协议类型
      */
@@ -42,23 +34,27 @@ public class CommonConfig {
      */
     private int maxBusBlockingTime;
     /**
-     * 集群通信事件处理线程数
-     */
-    private int eventBusThreadNumber;
-    /**
      * 集群通信事件队列容量
      */
     private int eventBusQueueSize;
     /**
-     * 心跳超时，网络延时事件
+     * rpc心跳超时，网络延时事件
      */
     private long timeout;
     /**
-     * 心跳超时，断开连接事件
+     * rpc心跳超时，断开连接事件
      */
     private long timeDisconnect;
+    /**
+     * 设备心跳超时
+     */
+    private long tcpTimeout;
     /**
      * 设备类型
      */
     private Integer equipmentType;
+    /**
+     * 默认消息重发窗口时间
+     */
+    private Integer defaultTimeout;
 }

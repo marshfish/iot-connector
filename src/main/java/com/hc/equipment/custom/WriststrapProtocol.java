@@ -1,4 +1,4 @@
-package com.hc.equipment.tcp.promise;
+package com.hc.equipment.custom;
 
 public class WriststrapProtocol {
     public static final String COMMA = ",";

@@ -2,6 +2,7 @@ package com.hc.equipment.dispatch.event;
 
 import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.rpc.MqConnector;
+import com.hc.equipment.rpc.PublishEvent;
 import com.hc.equipment.rpc.serialization.Trans;
 import com.hc.equipment.type.EventTypeEnum;
 import com.hc.equipment.util.IdGenerator;
@@ -36,15 +37,17 @@ public class DataUploadHandler {
      * @param message 消息(json)
      */
     public void uploadData(String eqId, String uri, String message) {
+        String id = String.valueOf(IdGenerator.buildDistributedId());
         Trans.event_data.Builder builder = Trans.event_data.newBuilder();
         byte[] bytes = builder.setType(EventTypeEnum.DEVICE_UPLOAD.getType()).
                 setUri(uri).
                 setEqId(eqId).
                 setEqType(commonConfig.getEquipmentType()).
                 setMsg(message).
-                setSerialNumber(String.valueOf(IdGenerator.buildDistributedId())).
+                setSerialNumber(id).
                 setTimeStamp(System.currentTimeMillis()).build().toByteArray();
-        mqConnector.publish(bytes);
+        PublishEvent publishEvent = new PublishEvent(bytes, id);
+        mqConnector.publishAsync(publishEvent);
     }
 
     /**
@@ -60,7 +63,7 @@ public class DataUploadHandler {
         String dispatcherId = seriaIdRegistry.get(serialNumber);
         if (!StringUtils.isEmpty(dispatcherId)) {
             seriaIdRegistry.remove(serialNumber);
-        }else{
+        } else {
             log.warn("根据流水号获取的dispatcher端ID不存在，拒绝上传");
             return;
         }
@@ -69,11 +72,11 @@ public class DataUploadHandler {
                 setSerialNumber(serialNumber).
                 setTimeStamp(System.currentTimeMillis()).
                 setDispatcherId(dispatcherId).
-                //TODO dispatcher端ID
-                        setMsg(message).
-                        setEqId(eqId).
-                        build().toByteArray();
-        mqConnector.publish(bytes);
+                setMsg(message).
+                setEqId(eqId).
+                build().toByteArray();
+        PublishEvent publishEvent = new PublishEvent(bytes, serialNumber);
+        mqConnector.publishAsync(publishEvent);
     }
 
     /**

@@ -1,4 +1,4 @@
-package com.hc.equipment.tcp.handler;
+package com.hc.equipment.tcp;
 
 import io.vertx.core.buffer.Buffer;
 import lombok.extern.slf4j.Slf4j;
@@ -9,8 +9,8 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 
-import static com.hc.equipment.tcp.promise.WriststrapProtocol.PREFIX;
-import static com.hc.equipment.tcp.promise.WriststrapProtocol.SUFFIX;
+import static com.hc.equipment.custom.WriststrapProtocol.PREFIX;
+import static com.hc.equipment.custom.WriststrapProtocol.SUFFIX;
 
 /**
  * 自定义粘包半包处理器

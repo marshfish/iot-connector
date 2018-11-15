@@ -14,7 +14,6 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -44,7 +43,7 @@ public class DispatcherProxy implements Bootstrap {
     public String routingTCP(String instruction, String equipmentId) {
         return Optional.ofNullable(equipmentId).
                 map(mappingEntry -> instruction).
-                map(data -> deviceSocketManager.getProtocolNumber(instruction)).
+                map(data -> deviceSocketManager.setProtocolNumber(instruction)).
                 map(TCP_INSTRUCTION_MAPPING::get).
                 map(mappingEntry -> (String) ReflectionUtil.invokeMethod(
                         mappingEntry.getObject(),

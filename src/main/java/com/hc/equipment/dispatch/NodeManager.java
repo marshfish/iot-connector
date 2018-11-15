@@ -1,12 +1,10 @@
 package com.hc.equipment.dispatch;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-import com.hazelcast.util.MapUtil;
 import com.hc.equipment.Bootstrap;
 import com.hc.equipment.LoadOrder;
 import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.rpc.MqConnector;
+import com.hc.equipment.rpc.PublishEvent;
 import com.hc.equipment.rpc.TransportEventEntry;
 import com.hc.equipment.rpc.serialization.Trans;
 import com.hc.equipment.type.EventTypeEnum;
@@ -17,8 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Component()
@@ -26,8 +23,6 @@ import java.util.Map;
 public class NodeManager implements Bootstrap {
     @Resource
     private CommonConfig commonConfig;
-    @Resource
-    private Gson gson;
 
     /**
      * 节点注册
@@ -46,18 +41,20 @@ public class NodeManager implements Bootstrap {
                 setSerialNumber(serialNumber).
                 setEqType(commonConfig.getEquipmentType()).
                 setProtocol(commonConfig.getProtocol()).
-                setEqQueueName(mqConnector.getRoutingKey()).
+                setEqQueueName(mqConnector.getQueue()).
                 build().toByteArray();
-        TransportEventEntry event = mqConnector.publishSync(serialNumber,
-                bytes);
-        Integer eventType;
-        if ((eventType = event.getType()) == null) {
-            throw new RuntimeException("节点注册失败,检查与dispatcher的通信状态,查看dispatcher端日志");
-        }
-        if (eventType != EventTypeEnum.REGISTER_SUCCESS.getType()) {
-            throw new RuntimeException("节点注册失败，" + event.getMsg());
-        }
-        log.info("{} 节点注册成功", commonConfig.getNodeArtifactId());
+        PublishEvent publishEvent = new PublishEvent(bytes, serialNumber);
+        TransportEventEntry event = mqConnector.publishSync(publishEvent,true);
+        Optional.ofNullable(event).map(TransportEventEntry::getType).ifPresent(e -> {
+            Integer eventType;
+            if ((eventType = event.getType()) == null) {
+                throw new RuntimeException("节点注册失败,检查与dispatcher的通信状态,查看dispatcher端日志");
+            }
+            if (eventType != EventTypeEnum.REGISTER_SUCCESS.getType()) {
+                throw new RuntimeException("节点注册失败，" + event.getMsg());
+            }
+            log.info("{} 节点注册成功", commonConfig.getNodeArtifactId());
+        });
     }
 
 }

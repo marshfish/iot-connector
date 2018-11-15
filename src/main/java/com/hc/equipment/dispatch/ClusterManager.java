@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -80,16 +81,16 @@ public class ClusterManager implements Bootstrap {
      */
     private void listen() {
         log.info("load and listen eventBus ");
-        //TODO
         ClusterManager.getEventBus().consumer(commonConfig.getNodeArtifactId(),
                 (Handler<Message<byte[]>>) event -> {
-                    byte[] bytes = event.body();
                     try {
+                        byte[] bytes = event.body();
                         Trans.event_data eventData = Trans.event_data.parseFrom(bytes);
                         TransportEventEntry eventEntry = TransportEventEntry.parseTrans2This(eventData);
                         //TODO 消息过期  消息重发
+                        log.info("***: {}, {}"+eventEntry.getType(),eventEntry.getSerialNumber());
                         eventDownStream.handlerMessage(eventEntry);
-                    } catch (InvalidProtocolBufferException e) {
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                 });

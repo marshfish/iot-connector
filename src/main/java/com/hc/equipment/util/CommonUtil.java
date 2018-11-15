@@ -1,10 +1,9 @@
 package com.hc.equipment.util;
 
-import com.hc.equipment.EquipmentTcpApplication;
 import com.hc.equipment.exception.NullParamException;
 import com.hc.equipment.mvc.NotNull;
-import io.vertx.core.eventbus.DeliveryOptions;
-import io.vertx.core.http.CaseInsensitiveHeaders;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.net.NetSocket;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.DigestUtils;
@@ -30,7 +29,11 @@ public class CommonUtil {
         return stringBuilder.toString();
     }
 
-    public String MD5(String message) {
+    public static void writeString(NetSocket netSocket, String data) {
+        netSocket.write(Buffer.buffer(data, "UTF-8"));
+    }
+
+    public static String MD5(String message) {
         try {
             return DigestUtils.md5DigestAsHex(message.getBytes("UTF-8"));
         } catch (UnsupportedEncodingException e) {
@@ -39,11 +42,11 @@ public class CommonUtil {
         }
     }
 
-    public void validEmpty(String paramName, Object value) {
+    public static void validEmpty(String paramName, Object value) {
         doValid(paramName, value);
     }
 
-    private void doValid(String fieldName, Object invoke) {
+    private static void doValid(String fieldName, Object invoke) {
         if (invoke == null) {
             throw new NullParamException(fieldName);
         }
@@ -59,8 +62,7 @@ public class CommonUtil {
         }
     }
 
-    //TODO 性能优化
-    public void validDTOEmpty(Object dto) {
+    public static void validDTOEmpty(Object dto) {
         if (null == dto) {
             throw new NullParamException("DTO");
         }
