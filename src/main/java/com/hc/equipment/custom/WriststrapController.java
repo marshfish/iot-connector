@@ -66,7 +66,11 @@ public class WriststrapController extends CommonUtil {
     @TcpRouter("AP49")
     public String heartRate(ParamEntry paramEntry) {
         String instruction = paramEntry.getInstruction();
-        log.info("心率测量结果:{}", instruction.substring(7, instruction.length() - 1));
+        String heartRate = instruction.substring(7, instruction.length() - 1);
+        log.info("心率测量结果:{}", heartRate);
+        dataUploadHandler.uploadData(paramEntry.getEquipmentId(),
+                "/beatHeart",
+                heartRate);
         return WriststrapProtocol.HEART_RATE;
     }
 

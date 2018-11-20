@@ -8,21 +8,29 @@ import com.hc.equipment.rpc.serialization.Trans;
 import com.hc.equipment.type.EventTypeEnum;
 import com.hc.equipment.type.QosType;
 import com.hc.equipment.util.IdGenerator;
-import com.hc.equipment.util.SpringContextUtil;
 import io.vertx.core.net.NetSocket;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.BeanFactoryAware;
 
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
-public abstract class AbsSocketManager implements DeviceSocketManager {
-    private MqConnector mqConnector = SpringContextUtil.getBean(MqConnector.class);
-    private CommonConfig commonConfig = SpringContextUtil.getBean(CommonConfig.class);
+public abstract class AbsSocketManager implements DeviceSocketManager, BeanFactoryAware {
+    private MqConnector mqConnector;
+    private CommonConfig commonConfig;
     //equipmentId -> netSocket
     protected ConcurrentHashMap<String, SocketWarpper> netSocketRegistry = new ConcurrentHashMap<>();
     //netSocket.hashcode() -> equipmentId
     protected ConcurrentHashMap<Integer, String> netSocketIdMapping = new ConcurrentHashMap<>();
+
+    @Override
+    public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+        mqConnector = beanFactory.getBean(MqConnector.class);
+        commonConfig = beanFactory.getBean(CommonConfig.class);
+    }
 
     @Override
     public void deviceLogout(NetSocket netSocket) {
@@ -47,15 +55,12 @@ public abstract class AbsSocketManager implements DeviceSocketManager {
                 PublishEvent publishEvent = new PublishEvent(bytes, id);
                 publishEvent.setTimeout(3000);
                 publishEvent.setQos(QosType.AT_LEAST_ONCE.getType());
-                TransportEventEntry eventEntry = mqConnector.publishSync(publishEvent, false);
-                if (eventEntry == null || eventEntry.getType() != EventTypeEnum.LOGOUT_SUCCESS.getType()) {
-                    //mq宕机无需处理，缓存到了MqFailProcessor，会自动重发
-                    //dispatcher宕机可以通过mq的autoAck和produceAck避免
-                    //redis挂了不考虑，缓存全丢掉，重新初始化即可
-                    //网络抖动就重发，dispatcher端做幂等
-                    log.warn("dispatcher端设备退出失败，可能由于节点宕机或网络超时");
-                }
-                log.info("设备在dispatcher端&connector端登出成功");
+                mqConnector.publishAsync(publishEvent);
+                //mq宕机无需处理，缓存到了MqFailProcessor，会自动重发
+                //dispatcher宕机可以通过mq的autoAck和produceAck避免
+                //redis挂了不考虑，缓存全丢掉，重新初始化即可
+                //网络抖动就重发，dispatcher端做幂等
+                log.info("设备登出成功");
             }
         }
     }
@@ -90,7 +95,7 @@ public abstract class AbsSocketManager implements DeviceSocketManager {
 
             //异步转同步,交给dispatcher端做登陆/注册校验
             PublishEvent publishEvent = new PublishEvent(bytes, serialNumber);
-            TransportEventEntry eventResult = mqConnector.publishSync(publishEvent, false);
+            TransportEventEntry eventResult = mqConnector.publishSync(publishEvent);
             final String finalEqId = eqId;
             Optional.ofNullable(eventResult).map(TransportEventEntry::getType).ifPresent(e -> {
                 if (eventResult.getType() == EventTypeEnum.LOGIN_SUCCESS.getType()) {

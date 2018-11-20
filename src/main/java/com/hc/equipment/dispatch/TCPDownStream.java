@@ -1,6 +1,7 @@
 package com.hc.equipment.dispatch;
 
 import com.hc.equipment.device.DeviceSocketManager;
+import com.hc.equipment.dispatch.event.MapDatabase;
 import com.hc.equipment.mvc.DispatcherProxy;
 import com.hc.equipment.tcp.PacketHandlerFactory;
 import com.hc.equipment.configuration.CommonConfig;
@@ -48,7 +49,7 @@ public class TCPDownStream extends AbstractVerticle {
 
     @Override
     public void stop() throws Exception {
-        //TODO 资源清理
+        SpringContextUtil.getBean(MapDatabase.class).close();
     }
 
     /**

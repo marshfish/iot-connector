@@ -6,7 +6,6 @@ import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.dispatch.event.EventHandlerPipeline;
 import com.hc.equipment.dispatch.event.PipelineContainer;
 import com.hc.equipment.rpc.TransportEventEntry;
-import com.hc.equipment.type.EventTypeEnum;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -14,9 +13,9 @@ import org.springframework.stereotype.Component;
 import javax.annotation.Resource;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 @Slf4j
@@ -31,21 +30,20 @@ public class MqEventDownStream implements Bootstrap {
     @Resource
     private PipelineContainer pipelineContainer;
     private final Object lock = new Object();
-    private static ArrayBlockingQueue<TransportEventEntry> eventQueue;
-    private static ExecutorService eventExecutor;
+    private ArrayBlockingQueue<TransportEventEntry> eventQueue;
+    private ExecutorService eventExecutor;
 
     private void initQueue() {
         eventQueue = new ArrayBlockingQueue<>(commonConfig.getEventBusQueueSize());
-        eventExecutor = Executors.newFixedThreadPool(1, new ThreadFactory() {
-            private AtomicInteger count = new AtomicInteger(1);
-
-            @Override
-            public Thread newThread(Runnable r) {
-                Thread thread = new Thread(r);
-                thread.setDaemon(true);
-                thread.setName("event-loop-" + count.getAndIncrement());
-                return thread;
-            }
+        eventExecutor = new ThreadPoolExecutor(1,
+                1,
+                0,
+                TimeUnit.MILLISECONDS,
+                new LinkedBlockingDeque<>(200), r -> {
+            Thread thread = new Thread(r);
+            thread.setDaemon(true);
+            thread.setName("event-loop-1");
+            return thread;
         });
     }
 

@@ -44,7 +44,7 @@ public class NodeManager implements Bootstrap {
                 setEqQueueName(mqConnector.getQueue()).
                 build().toByteArray();
         PublishEvent publishEvent = new PublishEvent(bytes, serialNumber);
-        TransportEventEntry event = mqConnector.publishSync(publishEvent,true);
+        TransportEventEntry event = mqConnector.publishSync(publishEvent);
         Optional.ofNullable(event).map(TransportEventEntry::getType).ifPresent(e -> {
             Integer eventType;
             if ((eventType = event.getType()) == null) {

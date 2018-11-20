@@ -1,27 +1,21 @@
 package com.hc.equipment.dispatch.event;
 
-import com.google.gson.Gson;
-import com.hazelcast.internal.partition.PartitionStateVersionMismatchException;
 import com.hc.equipment.Bootstrap;
 import com.hc.equipment.LoadOrder;
-import com.hc.equipment.device.SocketWarpper;
-import com.hc.equipment.rpc.MqConnector;
+import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.dispatch.event.handler.Pong;
+import com.hc.equipment.rpc.MqConnector;
 import com.hc.equipment.rpc.PublishEvent;
 import com.hc.equipment.rpc.serialization.Trans;
 import com.hc.equipment.type.EventTypeEnum;
-import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.util.IdGenerator;
-import io.netty.util.HashedWheelTimer;
-import io.netty.util.Timeout;
-import io.netty.util.TimerTask;
-import io.vertx.core.net.NetSocket;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -38,25 +32,18 @@ public class HeartBeatHandler implements Bootstrap {
     @Resource
     private Pong pong;
     private long pingTime;
+
     private ScheduledExecutorService pingService = Executors.newScheduledThreadPool(1, r -> {
         Thread thread = new Thread(r);
         thread.setName("timer-ping-1");
         thread.setDaemon(true);
         return thread;
     });
-    HashedWheelTimer timer = new HashedWheelTimer();
 
     @Override
     public void init() {
         log.info("load heart beat timer");
         initMqHeartbeat();
-    }
-
-    private void doEquipmentHeartbeat(SocketWarpper socketWarpper) {
-        Timeout timeout = timer.newTimeout(timeout1 -> socketWarpper.getNetSocket().close(),
-                5000, TimeUnit.MILLISECONDS);
-        socketWarpper.setTimer(timeout);
-
     }
 
     private void initMqHeartbeat() {
@@ -83,7 +70,7 @@ public class HeartBeatHandler implements Bootstrap {
             } catch (Exception e) {
                 log.error("心跳发生异常！，{}", e);
             }
-        }, 25000, 15000, TimeUnit.MILLISECONDS);
+        }, 25000, 90000, TimeUnit.MILLISECONDS);
     }
 
 }

@@ -4,15 +4,21 @@ import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.configuration.MqConfig;
 import com.hc.equipment.type.QosType;
 import com.hc.equipment.util.SpringContextUtil;
+import io.netty.util.HashedWheelTimer;
 import lombok.Data;
 import lombok.Setter;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 @Data
 public class PublishEvent {
-    private Integer defaultTimeout = SpringContextUtil.getBean(CommonConfig.class).getDefaultTimeout();
+    //时间轮算法定时器
+    private transient static HashedWheelTimer timer = new HashedWheelTimer();
+    //重发次数
+    private transient int rePostCount;
     /**
      * 队列名
      */
@@ -48,7 +54,7 @@ public class PublishEvent {
     public PublishEvent(byte[] message, String serialNumber) {
         this.message = message;
         this.serialNumber = serialNumber;
-        this.timeout = defaultTimeout;
+        this.timeout = SpringContextUtil.getBean(CommonConfig.class).getDefaultTimeout();
         this.qos = QosType.AT_MOST_ONCE.getType();
         this.timeStamp = System.currentTimeMillis();
     }
@@ -60,4 +66,18 @@ public class PublishEvent {
         headers.put(key, value);
     }
 
+    /**
+     * 自增
+     */
+    public PublishEvent addRePostCount() {
+        rePostCount++;
+        return this;
+    }
+
+    /**
+     * 添加timer，用于消息过期，重发校验
+     */
+    public void addTimer(Consumer<PublishEvent> consumer) {
+        timer.newTimeout(timeout -> consumer.accept(this), 5000, TimeUnit.MILLISECONDS);
+    }
 }

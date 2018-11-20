@@ -15,6 +15,8 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
+import com.rabbitmq.client.Recoverable;
+import com.rabbitmq.client.RecoveryListener;
 import com.rabbitmq.client.ShutdownSignalException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -29,13 +31,10 @@ import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 @Component
@@ -57,7 +56,11 @@ public class MqConnector implements Bootstrap {
     public static final String DISPATCHER_ID = "dispatcherId";
     public static final String CONNECTOR_ID = "connectorId";
     private Queue<PublishEvent> publishQueue = new ArrayBlockingQueue<>(300);
-    private ExecutorService publisherFactory = Executors.newFixedThreadPool(1, r -> {
+    private ExecutorService publisherFactory = new ThreadPoolExecutor(1,
+            1,
+            0,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingDeque<>(200), r -> {
         Thread thread = new Thread(r);
         thread.setDaemon(true);
         thread.setName("publish-exec-1");
@@ -67,8 +70,6 @@ public class MqConnector implements Bootstrap {
     private final Object monitor = new Object();
     private String routingKey;
     private boolean hasConnected = false;
-    private volatile boolean blocking = false;
-    private Semaphore semaphore = new Semaphore(1);
 
     private void connectRabbitMq() throws IOException, TimeoutException {
         ConnectionFactory factory = new ConnectionFactory();
@@ -83,11 +84,21 @@ public class MqConnector implements Bootstrap {
             log.error("rabbitMq断开连接：{} \r\n location:{}",
                     Arrays.toString(e.getStackTrace()), e.getReason().protocolMethodName());
             hasConnected = false;
-            mqConfig.setMqPort(5600);
-            init();
+        });
+        Recoverable recoverable = (Recoverable) connection;
+        recoverable.addRecoveryListener(new RecoveryListener() {
+            @Override
+            public void handleRecovery(Recoverable recoverable) {
+                log.warn("rabbitMq完成自动连接");
+                hasConnected = true;
+            }
+
+            @Override
+            public void handleRecoveryStarted(Recoverable recoverable) {
+                log.warn("rabbitMq_准备开始重连");
+            }
         });
         hasConnected = true;
-        log.info("mqqqqq连接成功");
     }
 
     private void registryConsumer() throws IOException {
@@ -131,38 +142,20 @@ public class MqConnector implements Bootstrap {
      * 回调流程详见 {@link com.hc.equipment.dispatch.event.EventHandler}
      *
      * @param publishEvent 推送事件
-     * @param globalLock   全局锁，会阻塞项目中所有对mq的publish操作
      * @return TransportEventEntry
      */
-    public TransportEventEntry publishSync(PublishEvent publishEvent, boolean globalLock) {
+    public TransportEventEntry publishSync(PublishEvent publishEvent) {
         SyncWarpper warpper = new SyncWarpper();
         Consumer<TransportEventEntry> consumerProxy = warpper.mockCallback();
         callbackManager.registerCallbackEvent(publishEvent.getSerialNumber(), consumerProxy);
-        //避免不了高并发时漏几条消息过去
-        //TODO 重构
         publishAsync(publishEvent);
-        if (globalLock) {
-            blocking = true;
-            TransportEventEntry result = warpper.blockingResult();
-            blocking = false;
-            semaphore.release();
-            return result;
-        } else {
-            return warpper.blockingResult();
-        }
+        return warpper.blockingResult();
     }
 
     /**
      * 向dispather异步推送消息
      */
     public void publishAsync(PublishEvent publishEvent) {
-        if (blocking) {
-            try {
-                semaphore.acquire();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
         synchronized (monitor) {
             if (publishQueue.offer(publishEvent)) {
                 monitor.notify();
@@ -178,11 +171,16 @@ public class MqConnector implements Bootstrap {
     private void startPublishThread() {
         publisherFactory.execute(new Runnable() {
             private Map<String, Channel> routingChannel = new HashMap<>();
-            private volatile boolean runnable = true;
+            private  boolean runnable = true;
 
             @Override
             public void run() {
                 while (runnable) {
+                    //失败消息重发
+                    PublishEvent publishEvent;
+                    while ((publishEvent = mqFailProcessor.reDeliveryFailMessage()) != null) {
+                        adaptChannel(publishEvent);
+                    }
                     PublishEvent eventEntry;
                     synchronized (monitor) {
                         while ((eventEntry = publishQueue.poll()) == null) {
@@ -192,10 +190,10 @@ public class MqConnector implements Bootstrap {
                                 e.printStackTrace();
                             }
                         }
+                        log.info("获取消息，推送给connector");
+                        //TODO 重构失败消息重发
+                        adaptChannel(eventEntry);
                     }
-                    log.info("获取消息，推送给connector");
-                    //TODO 重构失败消息重发
-                    adaptChannel(eventEntry);
                 }
             }
 
@@ -208,12 +206,15 @@ public class MqConnector implements Bootstrap {
                     if (newChannel != null) {
                         routingChannel.put(routingKey, newChannel);
                         publish(eventEntry, newChannel);
+                    }else{
+                        //mq连接断开消息存入死信队列
+                        if (eventEntry.getQos() == QosType.AT_LEAST_ONCE.getType()) {
+                            mqFailProcessor.addFailMessage(eventEntry);
+                        } else {
+                            //do nothing
+                            log.warn("mq连接断开，qos0消息丢失：{}", eventEntry);
+                        }
                     }
-                }
-                //失败消息重发
-                PublishEvent publishEvent;
-                if ((publishEvent = mqFailProcessor.reDeliveryFailMessage()) != null) {
-                    adaptChannel(publishEvent);
                 }
             }
 
@@ -336,6 +337,4 @@ public class MqConnector implements Bootstrap {
         }
         startPublishThread();
     }
-
-
 }

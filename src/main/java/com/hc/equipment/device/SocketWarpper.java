@@ -17,20 +17,27 @@ public class SocketWarpper {
     private static long tcpTimeout = SpringContextUtil.getBean(CommonConfig.class).getTcpTimeout();
     private NetSocket netSocket;
     private Timeout timeout;
+    private long lastUpdate;
 
     public SocketWarpper(NetSocket netSocket) {
         this.netSocket = netSocket;
-        if (timeout == null) {
-            timeout = timer.newTimeout(timeout1 -> netSocket.close(),
-                    tcpTimeout, TimeUnit.MILLISECONDS);
-        }
+        timeout = timer.newTimeout(timeout1 -> netSocket.close(),
+                tcpTimeout, TimeUnit.MILLISECONDS);
+        lastUpdate = System.currentTimeMillis();
     }
 
     public void updateTimer() {
+        //防止短时间大量心跳导致重复取消新建timer
+        //TODO
+        long now = System.currentTimeMillis();
+        if (now - lastUpdate < tcpTimeout * 0.5) {
+            return;
+        }
         boolean cancel = timeout.cancel();
         if (cancel) {
             timeout = timer.newTimeout(timeout1 -> netSocket.close(),
                     tcpTimeout, TimeUnit.MILLISECONDS);
+            lastUpdate = now;
         }
     }
 
