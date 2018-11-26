@@ -9,7 +9,6 @@ import com.hc.equipment.rpc.PublishEvent;
 import com.hc.equipment.rpc.serialization.Trans;
 import com.hc.equipment.type.EventTypeEnum;
 import com.hc.equipment.util.IdGenerator;
-import com.rabbitmq.utility.Utility;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -18,7 +17,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.Resource;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,7 +25,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 /**
  * 数据上传
@@ -41,19 +39,16 @@ public class DataUploadHandler implements Bootstrap {
     private CommonConfig commonConfig;
     @Resource
     private MapDatabase mapDatabase;
-    @Resource
-    private Gson gson;
     //流水号注册表 seriaId -> dispatcherId
     @Getter
     private Map<String, String> seriaIdRegistry = new ConcurrentHashMap<>();
     //数据上传的备份
     @Getter
-    private Map<String, PublishEvent> backupData =
-            Collections.synchronizedMap(new PipelineContainer.LRUHashMap<>(200));
+    private Map<String, PublishEvent> backupData = Collections.synchronizedMap(new HashMap<>(200));
     //失败消息队列
     @Getter
     private Queue<PublishEvent> failQueue = new LinkedBlockingQueue<>(200);
-
+    public static final String RE_POST_MESSAGE = "backup_msg";
     private static ScheduledExecutorService reSendThread = Executors.newScheduledThreadPool(1, r -> {
         Thread thread = new Thread(r);
         thread.setName("rePost-exec-1");
@@ -92,6 +87,7 @@ public class DataUploadHandler implements Bootstrap {
     private void qos1Publish(PublishEvent publishEvent) {
         //超时扫描失败消息
         publishEvent.addTimer(o -> {
+            log.warn("缓存失败消息");
             String serialNumber = o.getSerialNumber();
             if (backupData.containsKey(serialNumber)) {
                 backupData.remove(serialNumber);
@@ -109,7 +105,14 @@ public class DataUploadHandler implements Bootstrap {
      * @param serialNumber 消息流水号
      */
     public void ackDataUpload(String serialNumber) {
-        backupData.remove(serialNumber);
+        PublishEvent publishEvent;
+        if ((publishEvent = backupData.get(serialNumber)) != null) {
+            if (publishEvent.isEndurance()) {
+                mapDatabase.remove(serialNumber, RE_POST_MESSAGE);
+            }
+            backupData.remove(serialNumber);
+        }
+
     }
 
     /**
@@ -167,18 +170,22 @@ public class DataUploadHandler implements Bootstrap {
                         //当该消息投递次数小于2次时，暂不持久化到DB，继续尝试重发
                         String serialNumber = publishEvent.getSerialNumber();
                         if (publishEvent.getRePostCount() < 2) {
+                            log.info("尝试立即重发失败消息");
                             qos1Publish(publishEvent);
                         } else {
+                            log.info("尝试次数大于两次，持久化失败消息到DB，等待重新发送");
                             //写入到嵌入式数据库中
+                            publishEvent.setEnduranceFlag(true);
                             mapDatabase.write(serialNumber,
-                                    gson.toJson(publishEvent),
-                                    MapDatabase.RE_POST_MESSAGE).
+                                    publishEvent,
+                                    RE_POST_MESSAGE).
                                     close();
                         }
                     }
                     //每2小时检查一下数据库，尝试重发
-                    if (count == 40) {
-                        mapDatabase.read(PublishEvent.class, MapDatabase.RE_POST_MESSAGE).
+                    if (count == 2) {
+                        log.info("重新发送消息");
+                        mapDatabase.read(PublishEvent.class, RE_POST_MESSAGE).
                                 forEach(event -> qos1Publish(event));
                         mapDatabase.close();
                         count = 0;
@@ -187,6 +194,6 @@ public class DataUploadHandler implements Bootstrap {
                     log.error("消息重发线程异常：{}", Arrays.toString(e.getStackTrace()));
                 }
             }
-        }, 180000, 180000, TimeUnit.MILLISECONDS);
+        }, 30 * 1000, 1 * 60 * 1000, TimeUnit.MILLISECONDS);
     }
 }

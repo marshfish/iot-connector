@@ -29,10 +29,6 @@ public class CommonUtil {
         return stringBuilder.toString();
     }
 
-    public static void writeString(NetSocket netSocket, String data) {
-        netSocket.write(Buffer.buffer(data, "UTF-8"));
-    }
-
     public static String MD5(String message) {
         try {
             return DigestUtils.md5DigestAsHex(message.getBytes("UTF-8"));

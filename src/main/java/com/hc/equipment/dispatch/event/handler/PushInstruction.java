@@ -1,6 +1,7 @@
 package com.hc.equipment.dispatch.event.handler;
 
 import com.hc.equipment.device.DeviceSocketManager;
+import com.hc.equipment.device.SocketContainer;
 import com.hc.equipment.dispatch.event.AsyncEventHandler;
 import com.hc.equipment.dispatch.event.DataUploadHandler;
 import com.hc.equipment.rpc.TransportEventEntry;
@@ -17,7 +18,8 @@ public class PushInstruction extends AsyncEventHandler {
     private DeviceSocketManager deviceSocketManager;
     @Resource
     private DataUploadHandler dataUploadHandler;
-
+    @Resource
+    private SocketContainer socketContainer;
     @Override
     public void accept(TransportEventEntry event) {
         String eqId = event.getEqId();
@@ -30,8 +32,7 @@ public class PushInstruction extends AsyncEventHandler {
         validEmpty("指令流水号", serialNumber);
         //注册指令流水号与dispatcherId
         dataUploadHandler.attachSeriaId2DispatcherId(serialNumber, dispatcherId);
-        deviceSocketManager.getDeviceNetSocket(eqId).
-                ifPresent(netSocket -> writeString(netSocket, msg));
+        socketContainer.writeString(eqId,msg);
     }
 
     @Override

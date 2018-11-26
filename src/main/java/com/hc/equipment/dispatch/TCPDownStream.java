@@ -8,6 +8,7 @@ import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.util.CommonUtil;
 import com.hc.equipment.util.SpringContextUtil;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetServerOptions;
 import io.vertx.core.net.NetSocket;
@@ -66,7 +67,7 @@ public class TCPDownStream extends AbstractVerticle {
                     PacketHandlerFactory.buildPacketHandler(netSocket).packageHandler(buffer).forEach(command ->
                             Optional.ofNullable(deviceSocketManager.deviceLogin(netSocket, command))
                                     .map(id -> dispatcherProxy.routingTCP(command, id))
-                                    .ifPresent(result -> CommonUtil.writeString(netSocket, result)));
+                                    .ifPresent(result -> netSocket.write(Buffer.buffer(result, "UTF-8"))));
                 } catch (Exception e) {
                     log.error("TCP数据处理异常{}", e);
                     clearOnException(netSocket, true);
@@ -79,7 +80,8 @@ public class TCPDownStream extends AbstractVerticle {
     }
 
     private void clearOnException(NetSocket netSocket, boolean disConnect) {
-        deviceSocketManager.deviceLogout(netSocket);
+        deviceSocketManager.deviceLogout(netSocket.hashCode(),true);
+        //TODO 移除pipeline
         PacketHandlerFactory.removePackageHandler(netSocket);
         if (disConnect) {
             log.info("断开TCP连接：{}", netSocket.remoteAddress().host());

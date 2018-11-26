@@ -15,10 +15,18 @@ import java.util.function.Consumer;
 
 @Data
 public class PublishEvent {
-    //时间轮算法定时器
+    /**
+     * 时间轮算法定时器
+     */
     private transient static HashedWheelTimer timer = new HashedWheelTimer();
-    //重发次数
-    private transient int rePostCount;
+    /**
+     * 重发次数
+     */
+    private transient int rePostCount = 0;
+    /**
+     * 是否入库
+     */
+    private transient boolean endurance = false;
     /**
      * 队列名
      */
@@ -75,9 +83,16 @@ public class PublishEvent {
     }
 
     /**
+     * 设置入库flag
+     */
+    public void setEnduranceFlag(boolean flag) {
+        this.endurance = flag;
+    }
+
+    /**
      * 添加timer，用于消息过期，重发校验
      */
     public void addTimer(Consumer<PublishEvent> consumer) {
-        timer.newTimeout(timeout -> consumer.accept(this), 5000, TimeUnit.MILLISECONDS);
+        timer.newTimeout(timeout -> consumer.accept(this), 7000, TimeUnit.MILLISECONDS);
     }
 }

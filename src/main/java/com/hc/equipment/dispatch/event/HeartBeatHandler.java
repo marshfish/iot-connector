@@ -3,6 +3,7 @@ package com.hc.equipment.dispatch.event;
 import com.hc.equipment.Bootstrap;
 import com.hc.equipment.LoadOrder;
 import com.hc.equipment.configuration.CommonConfig;
+import com.hc.equipment.device.SocketContainer;
 import com.hc.equipment.dispatch.event.handler.Pong;
 import com.hc.equipment.rpc.MqConnector;
 import com.hc.equipment.rpc.PublishEvent;
@@ -31,6 +32,8 @@ public class HeartBeatHandler implements Bootstrap {
     private CommonConfig commonConfig;
     @Resource
     private Pong pong;
+    @Resource
+    private SocketContainer socketContainer;
     private long pingTime;
 
     private ScheduledExecutorService pingService = Executors.newScheduledThreadPool(1, r -> {
@@ -54,8 +57,22 @@ public class HeartBeatHandler implements Bootstrap {
                 setType(EventTypeEnum.PING.getType()).
                 setEqType(commonConfig.getEquipmentType()).
                 build().toByteArray();
-        pingService.scheduleAtFixedRate(() -> {
-            try {
+        pingService.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    heartBeat();
+                    deadChainCheck();
+                } catch (Exception e) {
+                    log.error("心跳发生异常！，{}", e);
+                }
+            }
+
+            private void deadChainCheck() {
+                socketContainer.doTimeout();
+            }
+
+            private void heartBeat() {
                 log.info("节点心跳");
                 pingTime = System.currentTimeMillis();
                 long timeout = pingTime - pong.getPongTime();
@@ -66,11 +83,8 @@ public class HeartBeatHandler implements Bootstrap {
                 }
                 PublishEvent publishEvent = new PublishEvent(bytes, id);
                 mqConnector.publishAsync(publishEvent);
-
-            } catch (Exception e) {
-                log.error("心跳发生异常！，{}", e);
             }
-        }, 25000, 90000, TimeUnit.MILLISECONDS);
+        }, 25000, 40000, TimeUnit.MILLISECONDS);
     }
 
 }

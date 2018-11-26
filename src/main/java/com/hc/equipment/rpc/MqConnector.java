@@ -20,6 +20,7 @@ import com.rabbitmq.client.RecoveryListener;
 import com.rabbitmq.client.ShutdownSignalException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -32,9 +33,11 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 @Component
@@ -104,20 +107,23 @@ public class MqConnector implements Bootstrap {
     private void registryConsumer() throws IOException {
         String routingKey = getQueue();
         //消费者不关心exchange和queue的binding，声明关注的队列即可
-        Channel channel = connection.createChannel();
-        channel.queueDeclare(routingKey, true, false, false, null);
-        channel.basicConsume(routingKey, true, new DefaultConsumer(channel) {
-            @Override
-            public void handleDelivery(String consumerTag, Envelope envelope,
-                                       AMQP.BasicProperties properties, byte[] body) throws IOException {
-                //dispatcher向connector节点发消息必须指定节点ID，反之则不必要，因为dispatcher在大多数情况下是无状态的
-                Object dispatcherId;
-                Map<String, Object> headers = properties.getHeaders();
-                if (headers != null && (dispatcherId = headers.get(CONNECTOR_ID)) != null) {
-                    clusterManager.publish(dispatcherId.toString(), body);
+        for (int i = 0; i < 2; i++) {
+            Channel channel = connection.createChannel();
+            channel.queueDeclare(routingKey, true, false, false, null);
+            channel.basicConsume(routingKey, true, new DefaultConsumer(channel) {
+                @Override
+                public void handleDelivery(String consumerTag, Envelope envelope,
+                                           AMQP.BasicProperties properties, byte[] body) throws IOException {
+                    //dispatcher向connector节点发消息必须指定节点ID，反之则不必要，因为dispatcher在大多数情况下是无状态的
+                    Object dispatcherId;
+                    Map<String, Object> headers = properties.getHeaders();
+                    if (headers != null && (dispatcherId = headers.get(CONNECTOR_ID)) != null) {
+                        clusterManager.publish(dispatcherId.toString(), body);
+                    }
                 }
-            }
-        });
+            });
+        }
+
     }
 
     /**
@@ -171,7 +177,7 @@ public class MqConnector implements Bootstrap {
     private void startPublishThread() {
         publisherFactory.execute(new Runnable() {
             private Map<String, Channel> routingChannel = new HashMap<>();
-            private  boolean runnable = true;
+            private boolean runnable = true;
 
             @Override
             public void run() {
@@ -206,7 +212,7 @@ public class MqConnector implements Bootstrap {
                     if (newChannel != null) {
                         routingChannel.put(routingKey, newChannel);
                         publish(eventEntry, newChannel);
-                    }else{
+                    } else {
                         //mq连接断开消息存入死信队列
                         if (eventEntry.getQos() == QosType.AT_LEAST_ONCE.getType()) {
                             mqFailProcessor.addFailMessage(eventEntry);
