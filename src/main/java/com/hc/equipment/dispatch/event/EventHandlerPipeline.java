@@ -1,7 +1,7 @@
 package com.hc.equipment.dispatch.event;
 
 
-import com.hc.equipment.rpc.TransportEventEntry;
+import com.hc.equipment.rpc.serialization.Trans;
 import com.hc.equipment.type.EventTypeEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -18,7 +18,7 @@ import java.util.function.Consumer;
 @Component
 public class EventHandlerPipeline implements Cloneable {
     //pipeline中的消费者事件字典
-    private Map<Integer, Consumer<TransportEventEntry>> eventHandler = new HashMap<>();
+    private Map<Integer, Consumer<Trans.event_data>> eventHandler = new HashMap<>();
 
     /**
      * 添加事件处理器
@@ -39,7 +39,7 @@ public class EventHandlerPipeline implements Cloneable {
      * @param eventType 事件类型
      * @param consumer  事件
      */
-    public void addEventHandler(Integer eventType, Consumer<TransportEventEntry> consumer) {
+    public void addEventHandler(Integer eventType, Consumer<Trans.event_data> consumer) {
         eventHandler.put(eventType, consumer);
     }
 
@@ -47,7 +47,7 @@ public class EventHandlerPipeline implements Cloneable {
         eventHandler.remove(eventType);
     }
 
-    public Consumer<TransportEventEntry> adaptEventHandler(Integer eventType) {
+    public Consumer<Trans.event_data> adaptEventHandler(Integer eventType) {
         return eventHandler.get(eventType);
     }
 

@@ -1,15 +1,13 @@
 package com.hc.equipment.dispatch.event.handler;
 
-import com.hc.equipment.rpc.TransportEventEntry;
 import com.hc.equipment.dispatch.NodeManager;
 import com.hc.equipment.dispatch.event.AsyncEventHandler;
+import com.hc.equipment.rpc.serialization.Trans;
 import com.hc.equipment.type.EventTypeEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadFactory;
 
 /**
  * 节点断线重连
@@ -21,8 +19,10 @@ public class DropConnection extends AsyncEventHandler {
     private NodeManager nodeManager;
 
     @Override
-    public void accept(TransportEventEntry event) {
+    public void accept(Trans.event_data event) {
         //节点超时断开，尝试重连。注意要新开线程，否则可能死锁
+        //如果能收到dropConnection的消息，说明之前有一段时间由于一些原因（网络延时、dispatcher/mq/redis宕机等）导致心跳超时
+        //但现在的通信链路正常，仅需重新注册该节点即可
         log.warn("节点断开，尝试与dispatcher重新连接");
         blockingOperation(() -> nodeManager.init());
     }

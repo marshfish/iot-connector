@@ -5,7 +5,6 @@ import com.hc.equipment.LoadOrder;
 import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.rpc.MqConnector;
 import com.hc.equipment.rpc.PublishEvent;
-import com.hc.equipment.rpc.TransportEventEntry;
 import com.hc.equipment.rpc.serialization.Trans;
 import com.hc.equipment.type.EventTypeEnum;
 import com.hc.equipment.util.IdGenerator;
@@ -15,7 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
-import java.util.Optional;
 
 @Slf4j
 @Component()
@@ -41,20 +39,18 @@ public class NodeManager implements Bootstrap {
                 setSerialNumber(serialNumber).
                 setEqType(commonConfig.getEquipmentType()).
                 setProtocol(commonConfig.getProtocol()).
-                setEqQueueName(mqConnector.getQueue()).
                 build().toByteArray();
         PublishEvent publishEvent = new PublishEvent(bytes, serialNumber);
-        TransportEventEntry event = mqConnector.publishSync(publishEvent);
-        Optional.ofNullable(event).map(TransportEventEntry::getType).ifPresent(e -> {
-            Integer eventType;
-            if ((eventType = event.getType()) == null) {
-                throw new RuntimeException("节点注册失败,检查与dispatcher的通信状态,查看dispatcher端日志");
-            }
-            if (eventType != EventTypeEnum.REGISTER_SUCCESS.getType()) {
+        Trans.event_data event = mqConnector.publishSync(publishEvent);
+        if (event != null) {
+            int type = event.getType();
+            if (type != EventTypeEnum.REGISTER_SUCCESS.getType()) {
                 throw new RuntimeException("节点注册失败，" + event.getMsg());
             }
             log.info("{} 节点注册成功", commonConfig.getNodeArtifactId());
-        });
+        } else {
+            throw new RuntimeException("节点注册失败,检查与dispatcher的通信状态,查看dispatcher端日志");
+        }
     }
 
 }

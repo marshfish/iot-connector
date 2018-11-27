@@ -2,9 +2,8 @@ package com.hc.equipment.dispatch.event;
 
 import com.hc.equipment.rpc.MqConnector;
 import com.hc.equipment.rpc.PublishEvent;
-import com.hc.equipment.rpc.TransportEventEntry;
+import com.hc.equipment.rpc.serialization.Trans;
 
-import java.util.concurrent.ThreadFactory;
 import java.util.function.Consumer;
 
 /**
@@ -26,13 +25,13 @@ import java.util.function.Consumer;
  * 返回Warpper中的响应结果
  * rabbitmq推送相关详见{@link MqConnector#publishAsync(PublishEvent publishEvent)}
  */
-public interface EventHandler extends Consumer<TransportEventEntry> {
+public interface EventHandler extends Consumer<Trans.event_data> {
     /**
      * 事件处理
      *
      * @param event 事件
      */
-    void accept(TransportEventEntry event);
+    void accept(Trans.event_data event);
 
     /**
      * 设置接受的事件类型

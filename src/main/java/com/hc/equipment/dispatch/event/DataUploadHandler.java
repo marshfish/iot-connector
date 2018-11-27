@@ -1,6 +1,7 @@
 package com.hc.equipment.dispatch.event;
 
 import com.google.gson.Gson;
+import com.google.protobuf.UnknownFieldSet;
 import com.hc.equipment.Bootstrap;
 import com.hc.equipment.LoadOrder;
 import com.hc.equipment.configuration.CommonConfig;

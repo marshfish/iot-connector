@@ -71,9 +71,15 @@ public class SocketContainer {
         return socketIdMapping.get(socketHash);
     }
 
-    public void writeString(String eqId, String data) {
-        Optional.ofNullable(socketRegistry.get(eqId)).
-                ifPresent(socket -> socket.element.write(Buffer.buffer(data, "UTF-8")));
+    public boolean writeString(String eqId, String data) {
+        Node<NetSocket> node;
+        if ((node = socketRegistry.get(eqId)) != null) {
+            node.element.write(Buffer.buffer(data, "UTF-8"));
+            return true;
+        } else {
+            log.warn("设备【{}】未登陆，无法推送指令",eqId);
+            return false;
+        }
     }
 
     public void registerSocket(String eqId, NetSocket element) {

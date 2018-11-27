@@ -8,6 +8,7 @@ import com.hc.equipment.dispatch.CallbackManager;
 import com.hc.equipment.dispatch.ClusterManager;
 import com.hc.equipment.dispatch.event.EventHandler;
 import com.hc.equipment.dispatch.event.EventHandlerPipeline;
+import com.hc.equipment.rpc.serialization.Trans;
 import com.hc.equipment.type.QosType;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
@@ -150,9 +151,9 @@ public class MqConnector implements Bootstrap {
      * @param publishEvent 推送事件
      * @return TransportEventEntry
      */
-    public TransportEventEntry publishSync(PublishEvent publishEvent) {
+    public Trans.event_data publishSync(PublishEvent publishEvent) {
         SyncWarpper warpper = new SyncWarpper();
-        Consumer<TransportEventEntry> consumerProxy = warpper.mockCallback();
+        Consumer<Trans.event_data> consumerProxy = warpper.mockCallback();
         callbackManager.registerCallbackEvent(publishEvent.getSerialNumber(), consumerProxy);
         publishAsync(publishEvent);
         return warpper.blockingResult();
@@ -284,11 +285,11 @@ public class MqConnector implements Bootstrap {
      * 消息同步器
      */
     private class SyncWarpper {
-        private volatile TransportEventEntry eventEntry;
+        private volatile Trans.event_data eventEntry;
         private CountDownLatch latch = new CountDownLatch(1);
         private long current = System.currentTimeMillis();
 
-        public TransportEventEntry blockingResult() {
+        public Trans.event_data blockingResult() {
             try {
                 boolean await = latch.await(commonConfig.getMaxBusBlockingTime(), TimeUnit.MILLISECONDS);
                 if (!await) {
@@ -299,11 +300,11 @@ public class MqConnector implements Bootstrap {
                 log.warn("同步调用线程被中断,{}", e);
                 return null;
             }
-            log.info("同步调用返回结果:{},耗时：{}", eventEntry, System.currentTimeMillis() - current);
+            log.info("同步调用返回结果:{},耗时：{}", eventEntry.asString(), System.currentTimeMillis() - current);
             return eventEntry;
         }
 
-        public Consumer<TransportEventEntry> mockCallback() {
+        public Consumer<Trans.event_data> mockCallback() {
             return eventEntry -> {
                 this.eventEntry = eventEntry;
                 latch.countDown();

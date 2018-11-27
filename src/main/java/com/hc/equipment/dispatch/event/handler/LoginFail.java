@@ -2,8 +2,7 @@ package com.hc.equipment.dispatch.event.handler;
 
 import com.hc.equipment.device.DeviceSocketManager;
 import com.hc.equipment.dispatch.event.AsyncEventHandler;
-import com.hc.equipment.dispatch.event.SyncEventHandler;
-import com.hc.equipment.rpc.TransportEventEntry;
+import com.hc.equipment.rpc.serialization.Trans;
 import com.hc.equipment.type.EventTypeEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -17,7 +16,7 @@ public class LoginFail extends AsyncEventHandler {
     private DeviceSocketManager deviceSocketManager;
 
     @Override
-    public void accept(TransportEventEntry event) {
+    public void accept(Trans.event_data event) {
         String msg = event.getMsg();
         validEmpty("消息", msg);
         String[] split = msg.split(":");

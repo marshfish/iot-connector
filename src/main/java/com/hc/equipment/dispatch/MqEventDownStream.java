@@ -5,7 +5,7 @@ import com.hc.equipment.LoadOrder;
 import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.dispatch.event.EventHandlerPipeline;
 import com.hc.equipment.dispatch.event.PipelineContainer;
-import com.hc.equipment.rpc.TransportEventEntry;
+import com.hc.equipment.rpc.serialization.Trans;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -30,7 +30,7 @@ public class MqEventDownStream implements Bootstrap {
     @Resource
     private PipelineContainer pipelineContainer;
     private final Object lock = new Object();
-    private ArrayBlockingQueue<TransportEventEntry> eventQueue;
+    private ArrayBlockingQueue<Trans.event_data> eventQueue;
     private ExecutorService eventExecutor;
 
     private void initQueue() {
@@ -47,10 +47,10 @@ public class MqEventDownStream implements Bootstrap {
         });
     }
 
-    public void handlerMessage(TransportEventEntry transportEventEntry) {
+    public void handlerMessage(Trans.event_data event) {
         synchronized (lock) {
-            log.info("放到队列：{}, {}", transportEventEntry.getType(), transportEventEntry.getSerialNumber());
-            if (!eventQueue.offer(transportEventEntry)) {
+            log.info("放到队列：{}, {}", event.getType(), event.getSerialNumber());
+            if (!eventQueue.offer(event)) {
                 log.warn("HttpUpStream事件处理队列已满");
             }
             lock.notify();
@@ -65,7 +65,7 @@ public class MqEventDownStream implements Bootstrap {
     private void exeEventLoop() {
         eventExecutor.execute(() -> {
             while (true) {
-                TransportEventEntry event;
+                Trans.event_data event;
                 synchronized (lock) {
                     while ((event = eventQueue.poll()) == null) {
                         try {
@@ -79,7 +79,7 @@ public class MqEventDownStream implements Bootstrap {
                     Integer eventType = event.getType();
                     String serialNumber = event.getSerialNumber();
                     log.info("处理队列----：{} , {}", eventType, serialNumber);
-                    Consumer<TransportEventEntry> consumer;
+                    Consumer<Trans.event_data> consumer;
                     //暂时没有特殊需求，使用默认pipeline即可，如果需要动态添加/删除，须在TCPDownStream配置
                     EventHandlerPipeline pipeline = pipelineContainer.getPipelineBySerialId(serialNumber);
                     if (pipeline == null) {
@@ -92,7 +92,7 @@ public class MqEventDownStream implements Bootstrap {
                         log.warn("未经注册的事件，{}", event);
                     }
                 } catch (Exception e) {
-                    log.warn("事件处理异常，event;{},e:{}", event, e);
+                    log.warn("事件处理异常，event:{},e:{}", event.asString(), e);
                 }
             }
         });

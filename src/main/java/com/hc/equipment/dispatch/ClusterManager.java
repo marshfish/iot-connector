@@ -1,13 +1,11 @@
 package com.hc.equipment.dispatch;
 
 import com.google.gson.Gson;
-import com.google.protobuf.InvalidProtocolBufferException;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.GroupConfig;
 import com.hc.equipment.Bootstrap;
 import com.hc.equipment.LoadOrder;
 import com.hc.equipment.configuration.CommonConfig;
-import com.hc.equipment.rpc.TransportEventEntry;
 import com.hc.equipment.rpc.serialization.Trans;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.DeploymentOptions;
@@ -24,7 +22,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
-import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -85,11 +82,7 @@ public class ClusterManager implements Bootstrap {
                 (Handler<Message<byte[]>>) event -> {
                     try {
                         byte[] bytes = event.body();
-                        Trans.event_data eventData = Trans.event_data.parseFrom(bytes);
-                        TransportEventEntry eventEntry = TransportEventEntry.parseTrans2This(eventData);
-                        //TODO 消息过期  消息重发
-                        log.info("***: {}, {}"+eventEntry.getType(),eventEntry.getSerialNumber());
-                        eventDownStream.handlerMessage(eventEntry);
+                        eventDownStream.handlerMessage(Trans.event_data.parseFrom(bytes));
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
