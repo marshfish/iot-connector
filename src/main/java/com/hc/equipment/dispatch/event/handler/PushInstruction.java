@@ -18,6 +18,7 @@ public class PushInstruction extends AsyncEventHandler {
     private DataUploadHandler dataUploadHandler;
     @Resource
     private SocketContainer socketContainer;
+    private static final String FAIL = "sendFail_noLogin";
 
     @Override
     public void accept(Trans.event_data event) {
@@ -32,17 +33,18 @@ public class PushInstruction extends AsyncEventHandler {
         validEmpty("指令", msg);
         validEmpty("指令流水号", serialNumber);
         validEmpty("qos", qos);
-        validEmpty("消息重发窗口时间",reTryTimeout);
+        validEmpty("消息重发窗口时间", reTryTimeout);
         if (qos == QosType.AT_MOST_ONCE.getType()) {
             socketContainer.writeString(eqId, msg);
         } else {
-            //注册指令流水号与dispatcherId
-            dataUploadHandler.attachSeriaId2DispatcherId(serialNumber, dispatcherId);
-            if (!socketContainer.writeString(eqId, msg)) {
-                dataUploadHandler.uploadCallback(serialNumber, eqId, "");
+            if (socketContainer.writeString(eqId, msg)) {
+                //注册指令流水号与dispatcherId
+                dataUploadHandler.attachSeriaId2DispatcherId(serialNumber, dispatcherId);
+            } else {
+                //TODO qos1 返回给dispatcher，发送失败,设备未登陆
+                dataUploadHandler.uploadCallback(serialNumber, eqId, FAIL);
             }
         }
-
     }
 
     @Override

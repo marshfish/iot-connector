@@ -34,7 +34,8 @@ public class HeartBeatHandler implements Bootstrap {
     private Pong pong;
     @Resource
     private SocketContainer socketContainer;
-    private long pingTime;
+    @Resource
+    private DataUploadHandler dataUploadHandler;
 
     private ScheduledExecutorService pingService = Executors.newScheduledThreadPool(1, r -> {
         Thread thread = new Thread(r);
@@ -58,33 +59,35 @@ public class HeartBeatHandler implements Bootstrap {
                 setEqType(commonConfig.getEquipmentType()).
                 build().toByteArray();
         pingService.scheduleAtFixedRate(new Runnable() {
+            private int flag = 0;
+
             @Override
             public void run() {
                 try {
-                    heartBeat();
-                    deadChainCheck();
+                    long now = System.currentTimeMillis();
+                    heartBeat(now);
+                    deadChainCheck(now);
                 } catch (Exception e) {
                     log.error("心跳发生异常！，{}", e);
                 }
             }
 
-            private void deadChainCheck() {
-                socketContainer.doTimeout();
+            private void deadChainCheck(long now) {
+                //默认内存清理间隔是心跳时长的5倍
+                if (flag++ == 5) {
+                    socketContainer.doTimeout(now);
+                    dataUploadHandler.doTimeout(now);
+                    flag = 0;
+                }
             }
 
-            private void heartBeat() {
-                log.info("节点心跳");
-                pingTime = System.currentTimeMillis();
-                long timeout = pingTime - pong.getPongTime();
-                if (timeout > commonConfig.getTimeout()) {
-                    log.warn("心跳超时，存在网络延时大于{}ms", commonConfig.getTimeout());
-                } else if (timeout > commonConfig.getTimeDisconnect()) {
-                    log.warn("心跳超时，已断开连接");
-                }
+            private void heartBeat(long now) {
+                long timeout = now - pong.getPongTime();
+                log.info("节点心跳，距上次心跳时间：{}",timeout);
                 PublishEvent publishEvent = new PublishEvent(bytes, id);
                 mqConnector.publishAsync(publishEvent);
             }
-        }, 25000, 40000, TimeUnit.MILLISECONDS);
+        }, 30000, 60000, TimeUnit.MILLISECONDS);
     }
 
 }

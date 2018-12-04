@@ -1,12 +1,12 @@
 package com.hc.equipment.dispatch;
 
-import com.google.gson.Gson;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.GroupConfig;
 import com.hc.equipment.Bootstrap;
 import com.hc.equipment.LoadOrder;
 import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.rpc.serialization.Trans;
+import io.netty.channel.ChannelHandlerContext;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Handler;
@@ -16,15 +16,21 @@ import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.CaseInsensitiveHeaders;
+import io.vertx.core.net.impl.NetSocketImpl;
+import io.vertx.core.net.impl.VertxNetHandler;
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 @Slf4j
 @Component
@@ -35,13 +41,10 @@ public class ClusterManager implements Bootstrap {
     @Resource
     private MqEventDownStream eventDownStream;
     @Resource
-    private Gson gson;
-    @Resource
     private CommonConfig commonConfig;
-    @Resource
-    private NodeManager nodeManager;
     private CountDownLatch latch = new CountDownLatch(1);
     private static EventBus eventBus;
+    private static Vertx vertx;
 
     @Override
     @SneakyThrows
@@ -62,7 +65,7 @@ public class ClusterManager implements Bootstrap {
 
     private void bootstrapHandler(AsyncResult<Vertx> event) {
         if (event.succeeded()) {
-            Vertx vertx = event.result();
+            vertx = event.result();
             vertx.deployVerticle(TCPDownStream.class, new DeploymentOptions().
                     setInstances(Runtime.getRuntime().availableProcessors()));
             eventBus = vertx.eventBus();
@@ -116,5 +119,12 @@ public class ClusterManager implements Bootstrap {
      */
     public static EventBus getEventBus() {
         return eventBus;
+    }
+
+    /**
+     * 获取vertx
+     */
+    public static Vertx getVertx() {
+        return vertx;
     }
 }

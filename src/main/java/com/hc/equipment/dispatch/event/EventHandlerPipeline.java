@@ -1,8 +1,11 @@
 package com.hc.equipment.dispatch.event;
 
 
+import com.hc.equipment.Bootstrap;
+import com.hc.equipment.LoadOrder;
 import com.hc.equipment.rpc.serialization.Trans;
 import com.hc.equipment.type.EventTypeEnum;
+import com.hc.equipment.util.SpringContextUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -16,7 +19,8 @@ import java.util.function.Consumer;
  */
 @Slf4j
 @Component
-public class EventHandlerPipeline implements Cloneable {
+@LoadOrder(6)
+public class EventHandlerPipeline implements Bootstrap {
     //pipeline中的消费者事件字典
     private Map<Integer, Consumer<Trans.event_data>> eventHandler = new HashMap<>();
 
@@ -50,16 +54,13 @@ public class EventHandlerPipeline implements Cloneable {
     public Consumer<Trans.event_data> adaptEventHandler(Integer eventType) {
         return eventHandler.get(eventType);
     }
-
+    /**
+     * 初始化defaultPipeline
+     */
     @Override
-    protected Object clone() {
-        EventHandlerPipeline pipeline = null;
-        try {
-            pipeline = (EventHandlerPipeline) super.clone();
-        } catch (CloneNotSupportedException e) {
-            e.printStackTrace();
-        }
-        return pipeline;
+    public void init() {
+        log.info("load pipeline container");
+        SpringContextUtil.getContext().getBeansOfType(EventHandler.class).
+                forEach((name, handler) -> addEventHandler(handler));
     }
-
 }

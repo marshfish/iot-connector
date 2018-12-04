@@ -14,7 +14,7 @@ public class Pong extends AsyncEventHandler {
     @Override
     public void accept(Trans.event_data event) {
         pongTime = System.currentTimeMillis();
-        log.info("收到来自服务器的pong");
+        log.info("pong");
     }
 
     @Override

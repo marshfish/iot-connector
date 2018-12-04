@@ -1,5 +1,6 @@
 package com.hc.equipment.tcp;
 
+import com.hc.equipment.custom.WriststrapProtocol;
 import io.vertx.core.buffer.Buffer;
 import lombok.extern.slf4j.Slf4j;
 
@@ -8,22 +9,28 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
-
-import static com.hc.equipment.custom.WriststrapProtocol.PREFIX;
-import static com.hc.equipment.custom.WriststrapProtocol.SUFFIX;
+import java.util.function.Consumer;
 
 /**
  * 自定义粘包半包处理器
  */
 @Slf4j
-public class WriststrapPacketHandler implements PacketHandler {
+public class SplitPacketHandler implements PacketHandler {
+    private String PREFIX = WriststrapProtocol.PREFIX;
+    private String SUFFIX = WriststrapProtocol.SUFFIX;
     private Queue<String> halfPacket = new ArrayBlockingQueue<>(1);
     private List<String> command = new ArrayList<>(5);
+    private Consumer<String> consumer;
+
+    public SplitPacketHandler(Consumer<String> consumer) {
+        this.consumer = consumer;
+    }
+
     @Override
-    public List<String> packageHandler(Buffer buffer) {
+    public void handler(Buffer buffer) {
         String data = buffer.getString(0, buffer.length());
         if (data == null) {
-            return command;
+            return;
         }
         boolean start = data.startsWith(PREFIX);
         boolean end = data.endsWith(SUFFIX);
@@ -88,9 +95,8 @@ public class WriststrapPacketHandler implements PacketHandler {
             log.error("包处理队列异常,清空队列,{}", e);
             throw e;
         }
-        ArrayList<String> commands = new ArrayList<>(command);
+        command.forEach(consumer);
         command.clear();
-        return commands;
     }
 
 }

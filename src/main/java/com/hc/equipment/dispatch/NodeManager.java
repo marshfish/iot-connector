@@ -47,7 +47,7 @@ public class NodeManager implements Bootstrap {
             if (type != EventTypeEnum.REGISTER_SUCCESS.getType()) {
                 throw new RuntimeException("节点注册失败，" + event.getMsg());
             }
-            log.info("{} 节点注册成功", commonConfig.getNodeArtifactId());
+            log.info("【{}】 节点在【{}】注册成功", commonConfig.getNodeArtifactId(),event.getDispatcherId());
         } else {
             throw new RuntimeException("节点注册失败,检查与dispatcher的通信状态,查看dispatcher端日志");
         }

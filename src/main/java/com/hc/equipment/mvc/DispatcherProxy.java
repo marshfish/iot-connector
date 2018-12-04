@@ -22,6 +22,7 @@ public class DispatcherProxy implements Bootstrap {
     @Resource
     private DeviceSocketManager deviceSocketManager;
     private static final Map<String, MappingEntry> TCP_INSTRUCTION_MAPPING = new HashMap<>();
+    private static final String HEARTBEAT_PACKAGE = "IWHB00#";
 
     @SneakyThrows
     @Override
@@ -35,6 +36,7 @@ public class DispatcherProxy implements Bootstrap {
                 if ((route = method.getAnnotation(TcpRouter.class)) != null) {
                     String uriKey = route.value();
                     TCP_INSTRUCTION_MAPPING.put(uriKey, new MappingEntry(object, method));
+                    TCP_INSTRUCTION_MAPPING.put(HEARTBEAT_PACKAGE, null);
                 }
             }
         });

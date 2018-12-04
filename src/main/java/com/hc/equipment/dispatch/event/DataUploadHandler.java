@@ -1,18 +1,15 @@
 package com.hc.equipment.dispatch.event;
 
-import com.google.gson.Gson;
-import com.google.protobuf.UnknownFieldSet;
 import com.hc.equipment.Bootstrap;
 import com.hc.equipment.LoadOrder;
 import com.hc.equipment.configuration.CommonConfig;
+import com.hc.equipment.dispatch.LinkedMap;
 import com.hc.equipment.rpc.MqConnector;
 import com.hc.equipment.rpc.PublishEvent;
 import com.hc.equipment.rpc.serialization.Trans;
 import com.hc.equipment.type.EventTypeEnum;
 import com.hc.equipment.util.IdGenerator;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -21,7 +18,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -41,13 +37,10 @@ public class DataUploadHandler implements Bootstrap {
     @Resource
     private MapDatabase mapDatabase;
     //流水号注册表 seriaId -> dispatcherId
-    @Getter
-    private Map<String, String> seriaIdRegistry = new ConcurrentHashMap<>();
+    private LinkedMap<String, String> linkedMap = new LinkedMap<>();
     //数据上传的备份
-    @Getter
     private Map<String, PublishEvent> backupData = Collections.synchronizedMap(new HashMap<>(200));
     //失败消息队列
-    @Getter
     private Queue<PublishEvent> failQueue = new LinkedBlockingQueue<>(200);
     public static final String RE_POST_MESSAGE = "backup_msg";
     private static ScheduledExecutorService reSendThread = Executors.newScheduledThreadPool(1, r -> {
@@ -126,10 +119,8 @@ public class DataUploadHandler implements Bootstrap {
      * @param message      消息
      */
     public void uploadCallback(String serialNumber, String eqId, String message) {
-        String dispatcherId = seriaIdRegistry.get(serialNumber);
-        if (!StringUtils.isEmpty(dispatcherId)) {
-            seriaIdRegistry.remove(serialNumber);
-        } else {
+        String dispatcherId = linkedMap.get(serialNumber);
+        if (dispatcherId == null) {
             log.warn("根据流水号获取的dispatcher端ID不存在，拒绝上传");
             return;
         }
@@ -143,6 +134,7 @@ public class DataUploadHandler implements Bootstrap {
                 build().toByteArray();
         PublishEvent publishEvent = new PublishEvent(bytes, serialNumber);
         mqConnector.publishAsync(publishEvent);
+        linkedMap.remove(serialNumber);
     }
 
     /**
@@ -152,7 +144,7 @@ public class DataUploadHandler implements Bootstrap {
      * @param dispatcherId dispatcherId
      */
     public void attachSeriaId2DispatcherId(String seriaId, String dispatcherId) {
-        seriaIdRegistry.put(seriaId, dispatcherId);
+        linkedMap.addTail(seriaId, dispatcherId);
     }
 
     @SuppressWarnings("UnusedAssignment")
@@ -185,9 +177,8 @@ public class DataUploadHandler implements Bootstrap {
                     }
                     //每2小时检查一下数据库，尝试重发
                     if (count == 2) {
-                        log.info("重新发送消息");
-                        mapDatabase.read(PublishEvent.class, RE_POST_MESSAGE).
-                                forEach(event -> qos1Publish(event));
+                        log.info("检查重发消息DB");
+                        mapDatabase.read(PublishEvent.class, RE_POST_MESSAGE, event -> qos1Publish(event));
                         mapDatabase.close();
                         count = 0;
                     }
@@ -196,5 +187,17 @@ public class DataUploadHandler implements Bootstrap {
                 }
             }
         }, 30 * 1000, 1 * 60 * 1000, TimeUnit.MILLISECONDS);
+    }
+
+    public void doTimeout(long now) {
+        linkedMap.onTimeout(stringNode -> {
+            //2分钟回调仍未被执行视为失败，进行回收,防止内存泄露
+            if (stringNode.getLastTime() + 120000 < now) {
+                log.info("回调等待执行超时，回收回调函数,id：{}", stringNode.getElement());
+                linkedMap.remove(stringNode.getKey());
+                return true;
+            }
+            return false;
+        });
     }
 }

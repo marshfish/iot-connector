@@ -33,15 +33,7 @@ public class CommonConfig {
      */
     private int eventBusQueueSize;
     /**
-     * rpc心跳超时，网络延时事件
-     */
-    private long timeout;
-    /**
-     * rpc心跳超时，断开连接事件
-     */
-    private long timeDisconnect;
-    /**
-     * 设备心跳超时
+     * 设备心跳超时，默认5min
      */
     private long tcpTimeout;
     /**

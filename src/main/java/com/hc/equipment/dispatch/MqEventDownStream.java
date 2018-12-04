@@ -4,13 +4,13 @@ import com.hc.equipment.Bootstrap;
 import com.hc.equipment.LoadOrder;
 import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.dispatch.event.EventHandlerPipeline;
-import com.hc.equipment.dispatch.event.PipelineContainer;
 import com.hc.equipment.rpc.serialization.Trans;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
+import java.util.Arrays;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -28,7 +28,7 @@ public class MqEventDownStream implements Bootstrap {
     @Resource
     private CommonConfig commonConfig;
     @Resource
-    private PipelineContainer pipelineContainer;
+    private EventHandlerPipeline pipeline;
     private final Object lock = new Object();
     private ArrayBlockingQueue<Trans.event_data> eventQueue;
     private ExecutorService eventExecutor;
@@ -49,7 +49,7 @@ public class MqEventDownStream implements Bootstrap {
 
     public void handlerMessage(Trans.event_data event) {
         synchronized (lock) {
-            log.info("放到队列：{}, {}", event.getType(), event.getSerialNumber());
+            log.info("接受事件：{}, {}", event.getType(), event.getSerialNumber());
             if (!eventQueue.offer(event)) {
                 log.warn("HttpUpStream事件处理队列已满");
             }
@@ -77,22 +77,14 @@ public class MqEventDownStream implements Bootstrap {
                 }
                 try {
                     Integer eventType = event.getType();
-                    String serialNumber = event.getSerialNumber();
-                    log.info("处理队列----：{} , {}", eventType, serialNumber);
                     Consumer<Trans.event_data> consumer;
-                    //暂时没有特殊需求，使用默认pipeline即可，如果需要动态添加/删除，须在TCPDownStream配置
-                    EventHandlerPipeline pipeline = pipelineContainer.getPipelineBySerialId(serialNumber);
-                    if (pipeline == null) {
-                        pipeline = pipelineContainer.getDefaultPipeline();
-                    }
                     if ((consumer = pipeline.adaptEventHandler(eventType)) != null) {
                         consumer.accept(event);
-                        pipelineContainer.removePipeline(serialNumber);
                     } else {
                         log.warn("未经注册的事件，{}", event);
                     }
                 } catch (Exception e) {
-                    log.warn("事件处理异常，event:{},e:{}", event.asString(), e);
+                    log.warn("事件处理异常，event:{},e:{}", event.asString(), Arrays.asList(e.getStackTrace()));
                 }
             }
         });

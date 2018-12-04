@@ -25,7 +25,7 @@ public interface DeviceSocketManager {
     /**
      * 设备登出
      */
-    void deviceLogout(int socketId,boolean pushTODispatcher);
+    void deviceLogout(int socketId,boolean pushToDispatcher);
 
     /**
      * 获取设备socket连接

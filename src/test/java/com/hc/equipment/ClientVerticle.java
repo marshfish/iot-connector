@@ -18,7 +18,7 @@ public class ClientVerticle extends AbstractVerticle {
     public void start() {
         log.info("客户端启动");
         NetClient netClient = vertx.createNetClient();
-        netClient.connect(8765, "39.105.146.15",
+        netClient.connect(8765, "localhost",
                 result -> {
                     try {
                         if (result.succeeded()) {
@@ -28,21 +28,11 @@ public class ClientVerticle extends AbstractVerticle {
                             return;
                         }
                         NetSocket socket = result.result();
-                        socket.write("IWAP003" + (Math.random() * 9 + 1) * 100000 + "2801330814#");
+                        socket.write("IWAP00351905183124515#");
 //                        for (int i1 = 0; i1 < 50; i1++) {
 //                            Thread.sleep(new Random().nextInt(12000));
 //                            socket.write("IWAPHT,60,130,85#");
 //                        }
-                        new Thread(()->{
-                            for(;;){
-                                socket.write("IWAPXL,99980835#");
-                                try {
-                                    Thread.sleep(80000);
-                                } catch (InterruptedException e) {
-                                    e.printStackTrace();
-                                }
-                            }
-                        }).start();
                         socket.handler(buffer -> {
                             String data = buffer.getString(0, buffer.length());
                             log.info("接收数据:{} ", data);
@@ -57,8 +47,9 @@ public class ClientVerticle extends AbstractVerticle {
                 });
     }
 
+
     public static void main(String[] args) {
-        for (int i = 0; i < 600; i++) {
+        for (int i = 0; i < 1; i++) {
             Vertx vertx = Vertx.vertx();
             try {
                 Thread.sleep(30);
