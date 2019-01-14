@@ -1,4 +1,16 @@
 #设备TCP中转服务器
+##使用方法：
+默认适用于处理TCP协议的指令（适用于大多数指令情况）
+默认传输字符格式指令，如果要处理传输的二进制流格式数据，需要重写一个com.hc.equipment.tcp.PacketHandler实现类处理。
+默认按分隔符切割指令格式，如果是按数据长度约定的指令，需要重写一个com.hc.equipment.tcp.PacketHandler实现类处理。
+
+Demo见com.hc.equipment.custom包
+WriststrapController顾名思义，转发TCP的文本指令，在这里处理业务逻辑，通过mq返回给dispatcher端，给设备返回响应
+WriststrapDevice设置消息的协议流水号的解析方法（即消息唯一ID）、设备唯一ID的解析方法（一般在设备首次登陆时由设备发过来）、设备登陆的指令流水号字符串
+WriststrapProtocol放了一些协议相关的约定，包头、包尾、指令流水号等等
+
+---------------------------------------------------------------------------------------
+##框架相关：
 * 通过RabbitMq接受服务器请求并通过tcp/udp转发给设备，来自设备的请求也通过tcp/udp进行响应
 * 由于springMVC仅能转发http请求，为了方便，自定义了一套mvc框架，仅支持rest请求（json + Http post）
   默认数据格式（方法参数&返回值）均为unicode的字符串，若无需响应tcp请求给设备，方法返回值设为void即可
