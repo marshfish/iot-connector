@@ -18,8 +18,8 @@ public class Pong extends AsyncEventHandler {
     }
 
     @Override
-    public Integer setReceivedEventType() {
-        return EventTypeEnum.PONG.getType();
+    public EventTypeEnum setReceivedEventType() {
+        return EventTypeEnum.PONG;
     }
 
     public long getPongTime() {

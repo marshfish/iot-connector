@@ -9,7 +9,6 @@ import com.hc.equipment.dispatch.ClusterManager;
 import com.hc.equipment.dispatch.event.EventHandler;
 import com.hc.equipment.dispatch.event.EventHandlerPipeline;
 import com.hc.equipment.rpc.serialization.Trans;
-import com.hc.equipment.type.QosType;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -19,9 +18,9 @@ import com.rabbitmq.client.Envelope;
 import com.rabbitmq.client.Recoverable;
 import com.rabbitmq.client.RecoveryListener;
 import com.rabbitmq.client.ShutdownSignalException;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -29,18 +28,16 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 @Component
 @Slf4j
@@ -54,8 +51,6 @@ public class MqConnector implements Bootstrap {
     private ClusterManager clusterManager;
     @Resource
     private CommonConfig commonConfig;
-    @Resource
-    private MqFailProcessor mqFailProcessor;
     private static final String QUEUE_MODEL = "direct";
     private static final String EQUIPMENT_QUEUE = "equipment_type_";
     public static final String DISPATCHER_ID = "dispatcherId";
@@ -67,7 +62,6 @@ public class MqConnector implements Bootstrap {
             TimeUnit.MILLISECONDS,
             new LinkedBlockingDeque<>(200), r -> {
         Thread thread = new Thread(r);
-        thread.setDaemon(true);
         thread.setName("publish-exec-1");
         return thread;
     });
@@ -184,11 +178,6 @@ public class MqConnector implements Bootstrap {
             @Override
             public void run() {
                 while (runnable) {
-                    //失败消息重发
-                    PublishEvent publishEvent;
-                    while ((publishEvent = mqFailProcessor.reDeliveryFailMessage()) != null) {
-                        adaptChannel(publishEvent);
-                    }
                     PublishEvent eventEntry;
                     synchronized (monitor) {
                         while ((eventEntry = publishQueue.poll()) == null) {
@@ -198,21 +187,10 @@ public class MqConnector implements Bootstrap {
                                 e.printStackTrace();
                             }
                         }
-                        adaptChannel(eventEntry);
-                    }
-                }
-            }
-
-            private void adaptChannel(PublishEvent eventEntry) {
-                Channel channel;
-                if ((channel = routingChannel.get(routingKey)) != null) {
-                    publish(eventEntry, channel);
-                } else {
-                    Channel newChannel = routingChannel.computeIfAbsent(routingKey, this::newProducerChannel);
-                    if (newChannel != null) {
-                        publish(eventEntry, newChannel);
-                    } else {
-                        doCycle(eventEntry);
+                        Channel newChannel = routingChannel.computeIfAbsent(routingKey, this::newProducerChannel);
+                        if (newChannel != null) {
+                            publish(eventEntry, newChannel);
+                        }
                     }
                 }
             }
@@ -234,19 +212,10 @@ public class MqConnector implements Bootstrap {
                             build();
                     localChannel.basicPublish(exchangeName, routingKey, props, bytes);
                 } catch (IOException | ShutdownSignalException e) {
-                    doCycle(eventEntry);
+                    log.error("消息发送失败,等待mq重连：{}", Arrays.toString(e.getStackTrace()));
                 }
             }
 
-            private void doCycle(PublishEvent eventEntry) {
-                //mq连接断开消息存入死信队列
-                if (eventEntry.getQos() == QosType.AT_LEAST_ONCE.getType()) {
-                    mqFailProcessor.addFailMessage(eventEntry);
-                } else {
-                    //do nothing
-                    log.warn("mq连接断开，qos0消息丢失：{}", eventEntry);
-                }
-            }
 
             /**
              * channel并非线程安全，共用一个channel可能导致autoACK出现问题

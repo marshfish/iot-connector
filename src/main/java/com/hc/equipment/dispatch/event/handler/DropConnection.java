@@ -37,7 +37,7 @@ public class DropConnection extends AsyncEventHandler {
     }
 
     @Override
-    public Integer setReceivedEventType() {
-        return EventTypeEnum.DROPPED.getType();
+    public EventTypeEnum setReceivedEventType() {
+        return EventTypeEnum.DROPPED;
     }
 }

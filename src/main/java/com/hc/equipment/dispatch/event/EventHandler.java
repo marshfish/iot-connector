@@ -3,6 +3,7 @@ package com.hc.equipment.dispatch.event;
 import com.hc.equipment.rpc.MqConnector;
 import com.hc.equipment.rpc.PublishEvent;
 import com.hc.equipment.rpc.serialization.Trans;
+import com.hc.equipment.type.EventTypeEnum;
 
 import java.util.function.Consumer;
 
@@ -38,5 +39,5 @@ public interface EventHandler extends Consumer<Trans.event_data> {
      *
      * @return 事件类型
      */
-    Integer setReceivedEventType();
+    EventTypeEnum setReceivedEventType();
 }

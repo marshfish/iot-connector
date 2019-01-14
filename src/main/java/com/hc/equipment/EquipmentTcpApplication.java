@@ -21,19 +21,19 @@ public class EquipmentTcpApplication {
 
     /**
      * 按顺序初始化启动类
+     *
      * @param beansOfType 继承启动接口的beanMap
      */
     public static void bootstrap(Map<String, Bootstrap> beansOfType) {
         List<Bootstrap> sortList = new ArrayList<>(beansOfType.values());
-        sortList.sort((o1, o2) -> {
-            Integer finalOrder = 1000;
+        sortList.stream().sorted((o1, o2) -> {
+            Integer finalOrder = Integer.MAX_VALUE;
             Integer o1Sort = Optional.ofNullable(o1.getClass().getAnnotation(LoadOrder.class)).
                     map(LoadOrder::value).orElse(finalOrder);
             Integer o2Sort = Optional.ofNullable(o2.getClass().getAnnotation(LoadOrder.class)).
                     map(LoadOrder::value).orElse(finalOrder);
             return o1Sort - o2Sort;
-        });
-        sortList.forEach(Bootstrap::init);
+        }).forEach(Bootstrap::init);
     }
 
 }

@@ -1,5 +1,7 @@
 package com.hc.equipment.type;
 
+import java.util.stream.Stream;
+
 public enum EventTypeEnum {
     DEVICE_LOGIN(1, "login"),
     DEVICE_LOGOUT(2, "logout"),
@@ -15,7 +17,11 @@ public enum EventTypeEnum {
     PONG(13, "pong"),
     DROPPED(14, "dropped"),
     LOGOUT_SUCCESS(15, "logout_success"),
-    UPLOAD_SUCCESS(16,"upload_success");
+    UPLOAD_SUCCESS(16, "upload_success"),
+    MONITOR(17, "monitor"),
+    MONITOR_DATA(18, "monitor_data"),
+    REGISTER_ERROR(19, "register_error"),
+    DUMP(20, "dump_thread");
     private int type;
     private String desc;
 
@@ -33,12 +39,7 @@ public enum EventTypeEnum {
     }
 
     public static EventTypeEnum getEnumByCode(int code) {
-        for (EventTypeEnum eventTypeEnum : EventTypeEnum.values()) {
-            if (code == eventTypeEnum.type) {
-                return eventTypeEnum;
-            }
-        }
-        return null;
+        return Stream.of(values()).filter(e -> e.type == code).findFirst().orElse(null);
     }
 
     @Override

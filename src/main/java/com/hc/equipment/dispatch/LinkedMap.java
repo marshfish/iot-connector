@@ -1,8 +1,11 @@
 package com.hc.equipment.dispatch;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 
 /**
@@ -14,11 +17,12 @@ import java.util.function.Predicate;
  * 由于jdk linkedList实现不了自定义逻辑，重写linkedList，在socket心跳时会被移动至链表尾部，
  * 从而实现链表头部只会有已超时的连接，只扫描链表头部即可清除死链，把一部分复杂度从心跳时挪到socket连接/关闭时，减少cpu与内存消耗
  */
+@Slf4j
 public class LinkedMap<S, E> {
-    private Map<S, Node<S,E>> map = new HashMap<>();
+    private Map<S, Node<S, E>> map = new HashMap<>();
     private final Object mutex;
-    private Node<S,E> tail;
-    private Node<S,E> head;
+    private Node<S, E> tail;
+    private Node<S, E> head;
 
     public LinkedMap() {
         this.mutex = this;
@@ -32,18 +36,25 @@ public class LinkedMap<S, E> {
         return Optional.ofNullable(map.get(key)).map(Node::getElement).orElse(null);
     }
 
-    public Node<S,E> getNode(S key) {
+    public Node<S, E> getNode(S key) {
         return map.get(key);
+    }
+
+    public Set<Map.Entry<S, Node<S, E>>> getEntries() {
+        synchronized (mutex) {
+            return map.entrySet();
+        }
     }
 
     @SuppressWarnings("UnusedAssignment")
     public boolean remove(S key) {
-        Node<S,E> node = map.get(key);
+        log.info("remove linkedMap,{}", key);
+        Node<S, E> node = map.get(key);
         if (node == null) {
             return false;
         }
-        Node<S,E> prev = node.prev;
-        Node<S,E> next = node.next;
+        Node<S, E> prev = node.prev;
+        Node<S, E> next = node.next;
         synchronized (mutex) {
             if (node == tail && node == head) {
                 head = tail = null;
@@ -63,9 +74,11 @@ public class LinkedMap<S, E> {
         return true;
     }
 
+
     public void addTail(S key, E element) {
+        log.info("add LinkedMap:{},{}", key, element);
         synchronized (mutex) {
-            Node<S,E> newNode = new Node<>(key, tail, element, null);
+            Node<S, E> newNode = new Node<>(key, tail, element, null);
             if (tail == null) {
                 head = newNode;
             } else {
@@ -76,7 +89,7 @@ public class LinkedMap<S, E> {
         }
     }
 
-    public void moveToTail(Node<S,E> node) {
+    public void moveToTail(Node<S, E> node) {
         synchronized (mutex) {
             if (node != tail) {
                 if (node == head) {
@@ -95,10 +108,11 @@ public class LinkedMap<S, E> {
         node.update();
     }
 
-    public void onTimeout(Predicate<Node<S,E>> condition) {
+    public void onTimeout(Predicate<Node<S, E>> condition) {
         synchronized (mutex) {
-            Node<S,E> temp = head;
+            Node<S, E> temp = head;
             while (temp != null && condition.test(temp)) {
+                log.info("节点666;{},{}", temp.getElement().hashCode(), temp.getLastTime());
                 temp = temp.next;
             }
         }
@@ -121,14 +135,17 @@ public class LinkedMap<S, E> {
         public E getElement() {
             return element;
         }
-        public S getKey(){
+
+        public S getKey() {
             return key;
         }
+
         public long getLastTime() {
             return lastTime;
         }
 
         private void update() {
+            log.info("更新时间*********************");
             this.lastTime = System.currentTimeMillis();
         }
     }

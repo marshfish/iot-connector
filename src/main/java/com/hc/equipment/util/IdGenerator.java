@@ -17,6 +17,9 @@ public class IdGenerator {
         }
     }
 
+    public static void main(String[] args) {
+        System.out.println(buildDistributedId());
+    }
     public static long buildDistributedId() {
         return SnowFlake.snowFlake.nextId();
     }

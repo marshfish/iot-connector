@@ -20,9 +20,9 @@ public class SplitPacketHandler implements PacketHandler {
     private String SUFFIX = WriststrapProtocol.SUFFIX;
     private Queue<String> halfPacket = new ArrayBlockingQueue<>(1);
     private List<String> command = new ArrayList<>(5);
-    private Consumer<String> consumer;
+    private Consumer< String> consumer;
 
-    public SplitPacketHandler(Consumer<String> consumer) {
+    public SplitPacketHandler(Consumer< String> consumer) {
         this.consumer = consumer;
     }
 

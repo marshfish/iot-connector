@@ -18,7 +18,7 @@ public class ClientVerticle extends AbstractVerticle {
     public void start() {
         log.info("客户端启动");
         NetClient netClient = vertx.createNetClient();
-        netClient.connect(8765, "localhost",
+        netClient.connect(8765, "39.105.146.15",
                 result -> {
                     try {
                         if (result.succeeded()) {

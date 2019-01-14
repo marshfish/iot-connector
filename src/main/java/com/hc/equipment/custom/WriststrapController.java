@@ -35,7 +35,7 @@ public class WriststrapController extends CommonUtil {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
         String format = simpleDateFormat.format(System.currentTimeMillis());
         return buildParam(WriststrapProtocol.PREFIX,
-                WriststrapProtocol.BP00,
+                WriststrapProtocol.BPLS,
                 WriststrapProtocol.COMMA,
                 format,
                 WriststrapProtocol.COMMA,
@@ -105,5 +105,15 @@ public class WriststrapController extends CommonUtil {
         dataUploadHandler.uploadCallback(seriaNumber, paramEntry.getEquipmentId(), instruction);
     }
 
+    /**
+     * 机器人响应
+     */
+    @TcpRouter("APRS")
+    public void robotResponse(ParamEntry paramEntry) {
+        String instruction = paramEntry.getInstruction();
+        log.info("机器人响应：{}", instruction);
+        String seriaNumber = instruction.substring(6, instruction.length() - 1);
+        dataUploadHandler.uploadCallback(seriaNumber, paramEntry.getEquipmentId(), instruction);
+    }
 
 }

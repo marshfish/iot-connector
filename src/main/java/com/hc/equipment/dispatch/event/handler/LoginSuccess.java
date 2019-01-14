@@ -12,11 +12,11 @@ public class LoginSuccess extends AsyncEventHandler {
 
     @Override
     public void accept(Trans.event_data event) {
-        log.info("登陆成功，{}", event.asString());
+        log.info("设备登陆成功，{}", event.asString());
     }
 
     @Override
-    public Integer setReceivedEventType() {
-        return EventTypeEnum.LOGIN_SUCCESS.getType();
+    public EventTypeEnum setReceivedEventType() {
+        return EventTypeEnum.LOGIN_SUCCESS;
     }
 }

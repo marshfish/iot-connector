@@ -7,6 +7,7 @@ import com.hc.equipment.mvc.DispatcherProxy;
 import com.hc.equipment.tcp.PacketHandlerFactory;
 import com.hc.equipment.util.SpringContextUtil;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetServerOptions;
@@ -14,9 +15,10 @@ import io.vertx.core.net.NetSocket;
 import io.vertx.core.streams.Pump;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Optional;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * tcp下行请求处理
@@ -26,9 +28,19 @@ public class TCPDownStream extends AbstractVerticle {
     private DispatcherProxy dispatcherProxy = SpringContextUtil.getBean(DispatcherProxy.class);
     private DeviceSocketManager deviceSocketManager = SpringContextUtil.getBean(DeviceSocketManager.class);
     private CommonConfig commonConfig = SpringContextUtil.getBean(CommonConfig.class);
-    private static AtomicInteger instance = new AtomicInteger(1);
+    private AtomicInteger instance = new AtomicInteger(1);
     private NetServer netServer;
-
+    private Function<NetSocket, Consumer<String>> action = netSocket -> command -> {
+        String eqId;
+        if ((eqId = deviceSocketManager.deviceLogin(netSocket, command)) != null) {
+            String result = dispatcherProxy.routingTCP(command, eqId);
+            if (result != null) {
+                netSocket.write(Buffer.buffer(result, "UTF-8"));
+            }
+        } else {
+            closeHook(netSocket, true);
+        }
+    };
 
     @Override
     public void start() {
@@ -58,26 +70,26 @@ public class TCPDownStream extends AbstractVerticle {
      * 响应请求
      */
     private void loadConnectionProcessor() {
-        netServer.connectHandler(netSocket -> {
-            //由vertx进行流量控制，及时阻塞该netSocket，防止client写入流量过大或由于其他阻塞操作引起的netSocket无界等待队列过大导致OOM
+        Handler<NetSocket> socketHandler = netSocket -> {
             Pump.pump(netSocket, netSocket).start();
-            netSocket.handler(buffer -> {
+            Handler<Buffer> handler = buffer -> {
                 log.info("{}接收数据:{} ", netSocket.remoteAddress().host(), buffer.getString(0, buffer.length()));
                 try {
-                    PacketHandlerFactory.build(netSocket, command ->
-                            Optional.ofNullable(deviceSocketManager.deviceLogin(netSocket, command))
-                                    .map(id -> dispatcherProxy.routingTCP(command, id))
-                                    .ifPresent(result -> netSocket.write(Buffer.buffer(result, "UTF-8")))
-                    ).handler(buffer);
+                    PacketHandlerFactory.build(netSocket, action.apply(netSocket)).handler(buffer);
                 } catch (Exception e) {
-                    log.error("TCP数据处理异常{}", e);
+                    log.warn("TCP数据处理异常{}", Arrays.toString(e.getStackTrace()));
                     closeHook(netSocket, true);
                 }
-            }).closeHandler(event -> closeHook(netSocket, false)).exceptionHandler(throwable -> {
-                log.info("TCP连接异常，关闭连接：{}，异常：{}", netSocket.remoteAddress().host(), throwable);
+            };
+            netSocket.handler(handler);
+            netSocket.closeHandler(event -> closeHook(netSocket, false));
+            netSocket.exceptionHandler(event -> {
+                log.warn("TCP连接异常：{}", Arrays.toString(event.getStackTrace()));
                 closeHook(netSocket, true);
             });
-        }).exceptionHandler(throwable -> log.error("TCP服务器异常:{}", throwable));
+        };
+        netServer.connectHandler(socketHandler);
+        netServer.exceptionHandler(throwable -> log.error("TCP服务器异常:{}", Arrays.toString(throwable.getStackTrace())));
     }
 
     private void closeHook(NetSocket netSocket, boolean disConnect) {
@@ -88,4 +100,5 @@ public class TCPDownStream extends AbstractVerticle {
             netSocket.close();
         }
     }
+
 }

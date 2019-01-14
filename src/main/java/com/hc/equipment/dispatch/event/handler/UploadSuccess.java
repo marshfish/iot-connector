@@ -24,7 +24,7 @@ public class UploadSuccess extends AsyncEventHandler {
     }
 
     @Override
-    public Integer setReceivedEventType() {
-        return EventTypeEnum.UPLOAD_SUCCESS.getType();
+    public EventTypeEnum setReceivedEventType() {
+        return EventTypeEnum.UPLOAD_SUCCESS;
     }
 }

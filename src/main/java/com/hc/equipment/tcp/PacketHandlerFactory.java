@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 public class PacketHandlerFactory {
     private static Map<String, PacketHandler> packetHandlerMap = new LRUMap<>();

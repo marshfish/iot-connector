@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class LogoutSuccess extends SyncEventHandler {
     @Override
-    public Integer setReceivedEventType() {
-        return EventTypeEnum.LOGOUT_SUCCESS.getType();
+    public EventTypeEnum setReceivedEventType() {
+        return EventTypeEnum.LOGOUT_SUCCESS;
     }
 }

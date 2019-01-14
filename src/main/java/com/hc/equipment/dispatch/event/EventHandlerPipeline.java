@@ -9,7 +9,7 @@ import com.hc.equipment.util.SpringContextUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -22,7 +22,7 @@ import java.util.function.Consumer;
 @LoadOrder(6)
 public class EventHandlerPipeline implements Bootstrap {
     //pipeline中的消费者事件字典
-    private Map<Integer, Consumer<Trans.event_data>> eventHandler = new HashMap<>();
+    private Map<EventTypeEnum, Consumer<Trans.event_data>> eventHandler = new EnumMap<>(EventTypeEnum.class);
 
     /**
      * 添加事件处理器
@@ -31,9 +31,9 @@ public class EventHandlerPipeline implements Bootstrap {
      * @return pipeline
      */
     public EventHandlerPipeline addEventHandler(EventHandler eventHandler) {
-        Integer eventType = eventHandler.setReceivedEventType();
+        EventTypeEnum eventType = eventHandler.setReceivedEventType();
         addEventHandler(eventType, eventHandler);
-        log.info("注册事件：{}", EventTypeEnum.getEnumByCode(eventType));
+        log.info("注册事件：{}", eventType);
         return this;
     }
 
@@ -43,7 +43,7 @@ public class EventHandlerPipeline implements Bootstrap {
      * @param eventType 事件类型
      * @param consumer  事件
      */
-    public void addEventHandler(Integer eventType, Consumer<Trans.event_data> consumer) {
+    public void addEventHandler(EventTypeEnum eventType, Consumer<Trans.event_data> consumer) {
         eventHandler.put(eventType, consumer);
     }
 
@@ -51,16 +51,17 @@ public class EventHandlerPipeline implements Bootstrap {
         eventHandler.remove(eventType);
     }
 
-    public Consumer<Trans.event_data> adaptEventHandler(Integer eventType) {
+    public Consumer<Trans.event_data> choose(EventTypeEnum eventType) {
         return eventHandler.get(eventType);
     }
+
     /**
      * 初始化defaultPipeline
      */
     @Override
     public void init() {
         log.info("load pipeline container");
-        SpringContextUtil.getContext().getBeansOfType(EventHandler.class).
-                forEach((name, handler) -> addEventHandler(handler));
+        SpringContextUtil.getContext().getBeansOfType(EventHandler.class).values().
+                forEach(this::addEventHandler);
     }
 }

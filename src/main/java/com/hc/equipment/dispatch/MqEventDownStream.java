@@ -5,6 +5,7 @@ import com.hc.equipment.LoadOrder;
 import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.dispatch.event.EventHandlerPipeline;
 import com.hc.equipment.rpc.serialization.Trans;
+import com.hc.equipment.type.EventTypeEnum;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -21,7 +22,7 @@ import java.util.function.Consumer;
 @Slf4j
 @Data
 @Component
-@LoadOrder(value = 2)
+@LoadOrder(value = 1)
 public class MqEventDownStream implements Bootstrap {
     @Resource
     private CallbackManager callbackManager;
@@ -41,7 +42,6 @@ public class MqEventDownStream implements Bootstrap {
                 TimeUnit.MILLISECONDS,
                 new LinkedBlockingDeque<>(200), r -> {
             Thread thread = new Thread(r);
-            thread.setDaemon(true);
             thread.setName("event-loop-1");
             return thread;
         });
@@ -78,7 +78,7 @@ public class MqEventDownStream implements Bootstrap {
                 try {
                     Integer eventType = event.getType();
                     Consumer<Trans.event_data> consumer;
-                    if ((consumer = pipeline.adaptEventHandler(eventType)) != null) {
+                    if ((consumer = pipeline.choose(EventTypeEnum.getEnumByCode(eventType))) != null) {
                         consumer.accept(event);
                     } else {
                         log.warn("未经注册的事件，{}", event);

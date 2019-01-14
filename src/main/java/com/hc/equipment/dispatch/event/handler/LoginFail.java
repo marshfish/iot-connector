@@ -28,8 +28,8 @@ public class LoginFail extends AsyncEventHandler {
     }
 
     @Override
-    public Integer setReceivedEventType() {
-        return EventTypeEnum.LOGIN_FAIL.getType();
+    public EventTypeEnum setReceivedEventType() {
+        return EventTypeEnum.LOGIN_FAIL;
     }
 
 }

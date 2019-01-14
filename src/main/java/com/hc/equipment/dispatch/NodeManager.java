@@ -44,12 +44,16 @@ public class NodeManager implements Bootstrap {
         Trans.event_data event = mqConnector.publishSync(publishEvent);
         if (event != null) {
             int type = event.getType();
-            if (type != EventTypeEnum.REGISTER_SUCCESS.getType()) {
-                throw new RuntimeException("节点注册失败，" + event.getMsg());
+            if (type == EventTypeEnum.REGISTER_ERROR.getType()) {
+                log.error("节点参数错误！检查该节点的协议与设备类型配置：{}", event.getMsg());
+                System.exit(1);
             }
-            log.info("【{}】 节点在【{}】注册成功", commonConfig.getNodeArtifactId(),event.getDispatcherId());
+            if (type == EventTypeEnum.REGISTER_FAIL.getType()) {
+                log.warn("节点重复登陆:{}", event.getMsg());
+            }
+            log.info("【{}】 节点在【{}】注册成功", commonConfig.getNodeArtifactId(), event.getDispatcherId());
         } else {
-            throw new RuntimeException("节点注册失败,检查与dispatcher的通信状态,查看dispatcher端日志");
+            log.warn("节点注册失败:1.同步调用超时 2.dispatcher节点挂掉，后续心跳将尝试注册到dispatcher端直到注册成功");
         }
     }
 

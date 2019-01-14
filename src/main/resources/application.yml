@@ -10,7 +10,7 @@ connector:
     host: 0.0.0.0
     tcpPort: 8765
     defaultTimeout: 6000
-    maxBusBlockingTime: 50000
+    maxBusBlockingTime: 5000
     eventBusQueueSize: 100
     tcpTimeout: 3000000
   rabbitmq:

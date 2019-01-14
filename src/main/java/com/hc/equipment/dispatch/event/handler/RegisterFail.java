@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 public class RegisterFail extends SyncEventHandler {
 
     @Override
-    public Integer setReceivedEventType() {
-        return EventTypeEnum.REGISTER_FAIL.getType();
+    public EventTypeEnum setReceivedEventType() {
+        return EventTypeEnum.REGISTER_FAIL;
     }
 }

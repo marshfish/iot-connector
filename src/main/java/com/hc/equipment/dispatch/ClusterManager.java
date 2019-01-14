@@ -6,7 +6,6 @@ import com.hc.equipment.Bootstrap;
 import com.hc.equipment.LoadOrder;
 import com.hc.equipment.configuration.CommonConfig;
 import com.hc.equipment.rpc.serialization.Trans;
-import io.netty.channel.ChannelHandlerContext;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Handler;
@@ -16,25 +15,20 @@ import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.CaseInsensitiveHeaders;
-import io.vertx.core.net.impl.NetSocketImpl;
-import io.vertx.core.net.impl.VertxNetHandler;
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
-import java.util.Collections;
-import java.util.IdentityHashMap;
+import java.util.Arrays;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 
 @Slf4j
 @Component
-@LoadOrder(value = 1)
+@LoadOrder(value = 2)
 public class ClusterManager implements Bootstrap {
     @Resource
     private CommonConfig beanCommonConfig;
@@ -72,7 +66,8 @@ public class ClusterManager implements Bootstrap {
             listen();
             latch.countDown();
         } else {
-            log.error("集群启动失败，{}", event.cause());
+            log.error("集群启动失败，{}", Arrays.toString(event.cause().getStackTrace()));
+            System.exit(1);
         }
     }
 
@@ -81,7 +76,7 @@ public class ClusterManager implements Bootstrap {
      */
     private void listen() {
         log.info("load and listen eventBus ");
-        ClusterManager.getEventBus().consumer(commonConfig.getNodeArtifactId(),
+        eventBus.consumer(commonConfig.getNodeArtifactId(),
                 (Handler<Message<byte[]>>) event -> {
                     try {
                         byte[] bytes = event.body();
