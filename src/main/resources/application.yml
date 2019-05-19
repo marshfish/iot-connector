@@ -14,7 +14,7 @@ connector:
     eventBusQueueSize: 100
     tcpTimeout: 3000000
   rabbitmq:
-    mqHost: 39.105.125.26
+    mqHost: localhost
     mqPort: 5672
     mqUserName: admin
     mqPwd: 12345678
